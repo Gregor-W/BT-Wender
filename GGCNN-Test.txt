@@ -1,0 +1,25 @@
+# https://github.com/dougsm/ggcnn
+# http://pr.cs.cornell.edu/grasping/rect_data/data.php
+# https://dougsm.github.io/egad/ 
+
+# test for gpu
+lspci | grep -i nvidia
+nvidia-smi
+
+# using ggcnn
+python3 -m utils.dataset_processing.generate_cornell_depth ../01
+python3 -m utils.dataset_processing.generate_cornell_depth ../02
+python3 train_ggcnn.py --description training_example --network ggcnn --dataset cornell --dataset-path ../
+python3 eval_ggcnn.py --network output/models/200403_1831_training_test/epoch_01_iou_0.15 --dataset cornell --dataset-path ../ --vis --iou-eval
+
+# ocatve
+flatpak run org.octave.Octave
+cd ggcnn/ggcnn_tutorial_dataset/labelling/
+>>>
+graphics_toolkit ('gnuplot') 
+DrawRect("../exampleDataset/", "pcd0104r", 1)
+
+# vnc
+export DISPLAY="localhost:1"
+vncserver :1
+vncserver -kill :1
