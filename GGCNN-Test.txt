@@ -14,7 +14,14 @@ python3 eval_ggcnn.py --network output/models/200403_1831_training_test/epoch_01
 
 # ocatve
 flatpak run org.octave.Octave
+flatpak run --share=network --command=bash org.octave.Octave -c "DISPLAY=$DISPLAY octave"
+flatpak run --socket=x11 --command=bash org.octave.Octave -c "DISPLAY=$DISPLAY octave"
+flatpak run --command=bash org.octave.Octave -c "DISPLAY=$DISPLAY octave"
+flatpak run --command=sh org.octave.Octave  -c "DISPLAY=:10.0 octave"
+
 cd ggcnn/ggcnn_tutorial_dataset/labelling/
+x = -10:0.1:10;
+plot(x, sin(x));
 >>>
 graphics_toolkit ('gnuplot') 
 DrawRect("../exampleDataset/", "pcd0104r", 1)
@@ -23,3 +30,85 @@ DrawRect("../exampleDataset/", "pcd0104r", 1)
 export DISPLAY="localhost:1"
 vncserver :1
 vncserver -kill :1
+
+# file transfer
+sudo apt install putty-tools
+
+# google drive
+# https://rclone.org/docs/
+
+mkdir ~/drive
+
+# mount
+rclone config
+rclone mount remote: /path/to/local/mount
+umount /path/to/local/mount
+
+rclone copy Nvidia_Cloud_EULA.pdf gdrivetest:/test
+
+rclone copy gdrive/ gdrivetest:/test
+rclone sync gdrivetest:test ~/gdrive
+
+# setup EGAD
+## FIX Install ##
+## in singularity.def ##
+## for autolab ##
+sed -i 's/joblib/joblib==0.14.1/g' setup.py
+add sudo apt-get install libboost-all-dev to singularity.def
+sed -i 's!boost/python/numeric.hpp!RDBoost/boost_numpy.h!g' meshpy/meshrender.cpp#
+sed -i 's!boost/python/numeric.hpp!boost/python/numpy.hpp!g' meshpy/meshrender.cpp
+sed -i 's/pyglet>=1.4.0b1/pyglet==1.4.10/g'
+
+wget https://sourceforge.net/projects/boost/files/boost/1.58.0/boost_1_58_0.tar.gz
+tar -zxvf boost_1_58_0.tar.gz
+cd boost_1_58_0
+sudo ./b2
+cd ..
+
+# check disk space
+df -h
+ncdu
+# find files
+find . -print | grep -i foo
+
+# run EGAD
+singularity run egad.sif
+singularity run -B ~/egad/output:/output --app datasetgen egad.sif
+
+python draw_map.py ~/egad/output/.../
+
+# anaconda
+conda create -n myenv python=3.6
+source activate 
+conda env remove -n ENV_NAME
+
+# 
+pip install numpy
+pip install matplotlib
+
+# run EGAD shell
+singularity run egad.sif
+cd /home/ubuntu/test-dexnet/deps/meshpy/build
+export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
+
+# working meshlab
+xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i ~/egad/test.uf.obj -o ~/egad/test-del.obj
+sed -i 's/meshlabserver -i/xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i/g' setup.py
+
+# scp
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@13.59.230.215:/home/ubuntu/egad/egad/singularity/install-log.txt G/Hochschule/
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/dexnet-create-image.py ubuntu@13.59.230.215:/home/ubuntu/test-dexnet/deps/meshpy/build
+
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem -r ubuntu@13.59.230.215:/home/ubuntu/egad/depth-images G/Hochschule/Festo/egad_data/depth
+
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@13.59.230.215:/home/ubuntu/tmp/test0.png G/Hochschule/Festo/egad_data
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@13.59.230.215:/home/ubuntu/egad/output/1589817197/viz/gen_0024.png G/Hochschule/Festo/egad_data
+
+
+
+# uninstall boost
+sudo apt-get -y --purge remove libboost-all-dev libboost-doc libboost-dev
+
+# view 3D obj
+ctmviewer /home/ubuntu/egad/obj-files/test.uf.obj
+

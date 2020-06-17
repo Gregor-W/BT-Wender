@@ -23,3 +23,4 @@ pip3 install -U scikit-image
 sudo apt-get install flatpak
 sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 sudo flatpak install flathub org.octave.Octave
+
