@@ -1,0 +1,189 @@
+Bootstrap: docker
+From: ubuntu:18.04
+
+%post
+    chmod 755 /root
+    apt-get -y update && apt-get -y upgrade
+    apt-get install -y software-properties-common
+    add-apt-repository -y ppa:openscad/releases
+    apt-get -y update
+
+    DEBIAN_FRONTEND=noninteractive apt-get -y install \
+        build-essential \
+        cmake \
+        wget \
+        git \
+        nano \
+        curl \
+        vim \
+        apt-utils \
+        python-dev \
+        python-pip \
+        python3-dev \
+        python3-pip \
+        libglib2.0-0  \
+        xvfb \
+        libgl1-mesa-dev \
+        libxkbcommon-x11-0 \
+        libavcodec-dev \
+        libavformat-dev \
+        libswscale-dev \
+        qt5-default \
+        libqt5widgets5 \
+        unity-gtk-module-common \
+        unity-gtk3-module \
+        xorg \
+        libgl1-mesa-glx \
+        mesa-utils \
+        language-pack-en-base \
+        libglew-dev \
+        libcanberra-gtk-module \
+        libcanberra-gtk3-module \
+        bash \
+        gcc \
+        gfortran \
+        g++ \
+        make \
+        file \
+        unzip \
+        python-sip \
+        python-qt4 \
+        libosmesa6-dev \
+        meshlab \
+        libhdf5-dev \
+        freeglut3 \
+        freeglut3-dev \
+        openscad \
+        blender \
+        python-tk \
+        ffmpeg \
+        default-jdk \
+        autotools-dev \
+        libicu-dev \
+        libbz2-dev \
+        
+    mkdir -p /home/co
+    
+    # Install libspatialindex
+    cd /home/co
+
+    wget https://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.gz
+    tar -zxvf boost_1_60_0.tar.gz
+    cd boost_1_60_0
+    ./bootstrap.sh
+    ./b2
+    ./b2 install
+    cd ..
+
+
+    wget https://download.osgeo.org/libspatialindex/spatialindex-src-1.7.0.tar.gz
+    tar -xzf spatialindex-src-1.7.0.tar.gz
+    cd spatialindex-src-1.7.0
+    ./configure
+    make
+    make install
+    ldconfig
+
+    # Install newest pip versions
+    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    python get-pip.py
+    python3 get-pip.py
+
+    pip2 install --upgrade setuptools
+    pip3 install --upgrade setuptools
+
+    # Install python2 dependencies (largely very specific to get dexnet to actually run).
+    pip2 install numpy==1.16.5 scipy==1.2.2 scikit-learn==0.20.4 scikit-image==0.14.5 opencv-python==4.1.2.30 pyassimp tensorflow==2.0.0 h5py networkx==2.2
+    pip2 install imageio==2.6.1
+    pip2 install vtk
+    pip2 install mayavi
+    pip2 install matplotlib==2.2.4 multiprocess dill cvxopt ipython==5.8.0 Pillow==6.2.1 setproctitle trimesh
+    pip2 install pyhull
+    pip2 install ffmpeg-python
+    pip2 install pathlib2
+	pip2 install shapely
+
+    # Install Dex-Net and dependencies.
+    mkdir -p /home/co/dexnet
+    cd /home/co/dexnet
+    wget https://github.com/dougsm/egad/releases/download/v0.1/dexnet_deployment.zip --no-check-certificate
+    unzip dexnet_deployment.zip
+
+
+    # fix meshlab
+    sed -i 's/meshlabserver -i/xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i/g' src/dexnet/database/mesh_processor.py
+
+    cd deps
+
+    # install SDFGen
+    cd SDFGen
+    sh install.sh
+    cd ..
+
+    # install Boost.NumPy
+    cd Boost.NumPy
+    sh install.sh
+	export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH >>$SINGULARITY_ENVIRONMENT
+    cd ..
+
+    # return to dex-net directory
+    
+    # install meshpy
+    cd meshpy
+    pip2 install -e .
+    #mkdir build
+    #cd build
+    #cmake ..
+    #make
+    #cp meshpy/meshrender.so ../meshpy
+    #cd ..
+    #rm -rf build
+    cd ..
+
+    # install all Berkeley AUTOLAB modules
+    # autolab_core
+    cd autolab_core
+    sed -i 's/joblib/joblib==0.14.1/g' setup.py
+    python setup.py develop
+    cd ..
+
+    # perception
+    cd perception
+    python setup.py develop
+    cd ..
+
+    # visualization
+    cd visualization
+    python setup.py develop
+
+    # dexnet
+    cd ..
+    cd ..
+    python setup.py develop
+
+
+    # Download reeb graphs.
+    mkdir -p /home/co/reeb
+    cd /home/co/reeb
+    git clone https://github.com/dbespalov/reeb_graph.git
+    cd reeb_graph
+    javac src/*.java
+
+    # Get VHACD
+    cd /home/co
+    wget https://github.com/kmammou/v-hacd/raw/e3acd8637397fab37423c734c6a980d7031d772f/bin/linux/testVHACD --no-check-certificate
+    chmod +x testVHACD
+    mv testVHACD /usr/bin/vhacd
+
+    # Install EGAD
+    cd /home/co
+    git clone https://github.com/dougsm/egad.git
+    cd egad
+    pip3 install -e .
+
+%environment
+    TMPDIR=/tmp
+
+%apprun datasetgen
+    cd /home/co/egad/scripts
+    xvfb-run python3 generate_dataset.py ${@}
