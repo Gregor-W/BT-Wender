@@ -46,7 +46,7 @@ def grasp_depth_images(dir_path, mesh_file):
         # grasps = sampler.generate_grasps(obj, max_iter=config['max_grasp_sampling_iters'])
         save_file_path = os.path.join(output, mesh_file.replace('.uf.obj', ''))
         #renderImages(save_file_path, obj.mesh, mesh_processor.stable_poses)
-        renderImages3(save_file_path, os.path.join(dir_path, mesh_file))
+        wirtePointCloud(save_file_path, os.path.join(dir_path, mesh_file))
     except ValueError:
         print("failed for: " + mesh_file)
         # shutil.rmtree(mp_cache)
@@ -140,6 +140,7 @@ def renderImages2(file_path, mesh_filename):
 
 def renderImages3(file_path, mesh_filename):
     orig_mesh = ObjFile(mesh_filename).read()
+    # orig_mesh = ObjFile("/home/ubuntu/egad/obj-files/test-mesh.obj").read()
     mesh = orig_mesh.subdivide(min_tri_length=0.01)
     mesh.compute_vertex_normals()
     stable_poses = mesh.stable_poses()
@@ -174,7 +175,59 @@ def renderImages3(file_path, mesh_filename):
             image_number += 1
             save_name = file_path + '_RI3_' + str(image_number) + '.png'
             print("Writing image: " + save_name)
-            r_image.image.to_color().save(save_name)
+            r_image.image.to_color(normalize=True).save(save_name)
+
+def wirtePointCloud(file_path, mesh_filename):
+    orig_mesh = ObjFile(mesh_filename).read()
+    # orig_mesh = ObjFile("/home/ubuntu/egad/obj-files/test-mesh.obj").read()
+    mesh = orig_mesh.subdivide(min_tri_length=0.01)
+    mesh.compute_vertex_normals()
+    stable_poses = mesh.stable_poses()
+
+    # setup virtual camera
+    width = render_config['width']
+    height = render_config['height']
+    f = render_config['focal']
+    cx = float(width) / 2
+    cy = float(height) / 2
+    ci = CameraIntrinsics('camera', fx=f, fy=f, cx=cx, cy=cy, height=height, width=width)
+    vp = ViewsphereDiscretizer(min_radius=render_config['min_radius'],
+                                       max_radius=render_config['max_radius'],
+                                       num_radii=render_config['num_radii'],
+                                       min_elev=render_config['min_elev']*np.pi,
+                                       max_elev=render_config['max_elev']*np.pi,
+                                       num_elev=render_config['num_elev'],
+                                       num_az=render_config['num_az'],
+                                       num_roll=render_config['num_roll'])
+    vc = VirtualCamera(ci)
+
+    image_number = 0
+
+    for stable_pose in stable_poses:
+        rendered_images = vc.wrapped_images(mesh, [vp.object_to_camera_poses()[0]], RenderMode.DEPTH, stable_pose)
+        for r_image in rendered_images:
+            image_number += 1
+            save_name = file_path + '_PC_' + str(image_number) + '.pcd'
+            
+            # create point cloud
+            pc = r_image.image.point_normal_cloud(ci)
+            pc.remove_zero_points()
+            points = pc.points
+            with open(save_name, "w") as f:
+                write_header(f)
+                f.write("POINTS " + str() + "\n")
+                for i, (x, y, z) in enumerate(zip(points.x_coords, points.y_coords, points.z_coords)):
+                    f.write("%f %f %f %f %i\n" % (x * 10000, y * 10000, z * 10000, 0, i))
+
+       
+def write_header(file):
+    file.write("# .PCD v.7 - Point Cloud Data file format\n")
+    file.write("FIELDS x y z rgb index\n")
+    file.write("SIZE 4 4 4 4 4\n")
+    file.write("TYPE F F F F U\n")
+    file.write("COUNT 1 1 1 1 1\n")
+    file.write("DATA ascii\n")
+   
 
 mesh_files_dir = "/home/ubuntu/egad/output/1589817197/pool"
 

@@ -9,7 +9,7 @@ cd egad
 pip3 install -e .
 cd ~
 
-# Singularity
+
 sudo apt-get update && sudo apt-get install -y \
     build-essential \
     uuid-dev \
