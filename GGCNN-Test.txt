@@ -97,13 +97,18 @@ xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i ~/egad/test.uf.obj -o ~/e
 sed -i 's/meshlabserver -i/xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i/g' setup.py
 
 # scp
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@13.59.230.215:/home/ubuntu/egad/egad/singularity/install-log.txt G/Hochschule/
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/dexnet-create-image.py ubuntu@13.59.230.215:/home/ubuntu/test-dexnet/deps/meshpy/build
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/convert-point-cloud.py ubuntu@13.59.230.215:/home/ubuntu/ggcnn/ggcnn
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem -r ubuntu@13.59.230.215:/home/ubuntu/egad/depth-images G/Hochschule/Festo/egad_data/depth
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.191.177.49:/home/ubuntu/egad/egad/singularity/install-log.txt G/Hochschule/
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/dexnet-create-image.py ubuntu@18.191.177.49:/home/ubuntu/test-dexnet/deps/meshpy/build
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/convert-point-cloud.py ubuntu@18.191.177.49:/home/ubuntu/ggcnn/ggcnn
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem -r ubuntu@18.191.177.49:/home/ubuntu/egad/depth-images G/Hochschule/Festo/egad_data/depth
 
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@13.59.230.215:/home/ubuntu/tmp/test0.png G/Hochschule/Festo/egad_data
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@13.59.230.215:/home/ubuntu/egad/output/1589817197/viz/gen_0024.png G/Hochschule/Festo/egad_data
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.191.177.49:/home/ubuntu/tmp/test0.png G/Hochschule/Festo/egad_data
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.191.177.49:/home/ubuntu/egad/output/1589817197/viz/gen_0024.png G/Hochschule/Festo/egad_data
+
+
+
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.191.177.49:/home/ubuntu/egad/output/1589817197/pool/0024_2439.uf.obj G/Hochschule/Festo/grasp-data
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem -r ubuntu@18.191.177.49:/home/ubuntu/egad/grasp-data/test-object0 G/Hochschule/Festo/grasp-data
 
 
 

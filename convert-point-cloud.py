@@ -10,9 +10,14 @@ path = "/home/ubuntu/egad/depth-images"
 pcds = glob.glob(os.path.join(path, '*.pcd'))
 
 for pcd in pcds:
-    di = DepthImage.from_pcd(pcd, (480, 640))
-    di.inpaint()
+    depIm = DepthImage.from_pcd(pcd, (270, 270))
+    depIm.inpaint()
+    depIm.normalise()
 
     of_name = pcd.replace('.pcd', 'd.tiff')
     print(of_name)
-    imsave(of_name, di.img.astype(np.float32))
+    imsave(of_name, depIm.img.astype(np.float32))
+    
+    
+    
+    

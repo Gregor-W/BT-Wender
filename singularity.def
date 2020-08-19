@@ -111,7 +111,7 @@ From: ubuntu:18.04
 
 
     # fix meshlab
-    # sed -i 's/meshlabserver -i/xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i/g' src/dexnet/database/mesh_processor.py
+    sed -i 's/meshlabserver -i/xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i/g' src/dexnet/database/mesh_processor.py
 
     cd deps
 
