@@ -61,7 +61,7 @@ for e, i in enumerate(stable_pose.translation):
 pose_string = pose_string + ['0', '0', '0', '1']
 
 # Build process call
-call_list = ["python2", "render-depth.py", "--mesh", "/home/gregor/Share/Festo/0024_2439.uf_proc.obj", "--pose"]
+call_list = ["python3", "render_depth.py", "--mesh", "/home/gregor/Share/Festo/0024_2439.uf_proc.obj", "--pose"]
 call_list += pose_string
 call_list.append("--grasp_center")
 call_list += grasp_string
