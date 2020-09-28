@@ -10,7 +10,7 @@ parser.add_argument('--mesh')
 parser.add_argument('--pose', nargs='*', type=float)
 parser.add_argument('--grasp_center', nargs='*', type=float)
 parser.add_argument('--grasp_vector', nargs='*', type=float)
-parser.add_argument('--number', nargs='*', type=int)
+parser.add_argument('--path')
 args = parser.parse_args()
 
 # convert point in obj coords to point on image
@@ -27,10 +27,17 @@ def convert_object_point_to_img(s_point, obj_pose, camera_pose, proj_matrix):
     
     return x, y
 
+
 # load mesh
 fuze_trimesh = trimesh.load(args.mesh)
 mesh = pyrender.Mesh.from_trimesh(fuze_trimesh)
 scene = pyrender.Scene()
+
+# load table
+table_trimesh = trimesh.load('~/Share/Festo/table.obj')
+table_mesh =  pyrender.Mesh.from_trimesh(table_trimesh)
+scene.add(table_mesh)
+
 
 # stable pose
 obj_pose = np.array([
@@ -40,13 +47,15 @@ obj_pose = np.array([
     args.pose[12: 16]
 ])
 
+obj_pose = np.linalg.inv(obj_pose)
+
 scene.add(mesh, pose=obj_pose)
 camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0)
 
 img_w = 400
 img_h = 400
 alpha = 0
-dist = 0.1
+dist = 0.15
 
 camera_pose = np.array([
     [np.cos(alpha), 0, np.sin(alpha), np.sin(alpha) * dist],
@@ -58,7 +67,7 @@ camera_pose = np.array([
 light_pose = np.array([
     [1,0,0,0.2],
     [0,1,0,0],
-    [0,0,1,0],
+    [0,0,1,1],
     [0,0,0,1]
 ])
 
@@ -94,16 +103,11 @@ sc = [None] * 6
 
 # First plot
 fig = plt.figure()
-ax0 = plt.subplot(1,2,1)
-ax0.axis('off')
-ax0.imshow(color)
-sc[0] = ax0.scatter(x0,y0)
-sc[1] = ax0.scatter(x1,y1)
-sc[2] = ax0.scatter(x2,y2)
-ax1 = plt.subplot(1,2,2)
+ax1 = plt.subplot(1, 1, 1)
 ax1.axis('off')
 ax1.imshow(depth, cmap=plt.cm.gray_r)
 sc[3] = ax1.scatter(x0,y0)
 sc[4] = ax1.scatter(x1,y1)
 sc[5] = ax1.scatter(x2,y2)
-plt.savefig("images/test" + str(args.number) + ".png")
+print(args.path)
+plt.savefig(args.path)

@@ -2,6 +2,7 @@ import numpy as np
 import trimesh
 import pyrender
 import matplotlib.pyplot as plt
+matplotlib.use('agg')
 import argparse
 
 # command arguments
@@ -39,18 +40,21 @@ scene = pyrender.Scene()
 #table_mesh = pyrender.Mesh.from_trimesh(table_obj)
 #scene.add(table_mesh)
 
-table_pose = np.array([
-    [1,0,0,0],
-    [0,0,1,-0.03],
-    [0,-1,0,0],
-    [0,0,0,1]
-])
+#table_pose = np.array([
+#    [1,0,0,0],
+#    [0,0,1,-0.03],
+#    [0,-1,0,0],
+#    [0,0,0,1]
+#])
 
-cyl = trimesh.creation.cylinder(1, height=0.02)
-cyl_mesh = pyrender.Mesh.from_trimesh(cyl)
-scene.add(cyl_mesh, pose=table_pose)
+#cyl = trimesh.creation.cylinder(1, height=0.02)
+#cyl_mesh = pyrender.Mesh.from_trimesh(cyl)
+#scene.add(cyl_mesh, pose=table_pose)
 
 
+table_trimesh = trimesh.load('~/Share/Festo/table.obj')
+table_mesh =  pyrender.Mesh.from_trimesh(table_trimesh)
+scene.add(table_mesh)
 
 
 # load mesh
@@ -58,14 +62,15 @@ fuze_trimesh = trimesh.load(args.mesh)
 mesh = pyrender.Mesh.from_trimesh(fuze_trimesh)
 
 # stable pose
-obj_pose = np.array([
+T_obj_table = np.array([
     args.pose[0: 4],
     args.pose[4: 8],
     args.pose[8: 12],    
     args.pose[12: 16]
 ])
 
-
+#obj_pose = T_obj_table
+obj_pose = np.linalg.inv(T_obj_table)
 
 scene.add(mesh, pose=obj_pose)
 camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0)
@@ -73,20 +78,33 @@ camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0)
 img_w = 400
 img_h = 400
 alpha = 0
-dist = 0.1
-height = 0
+height = 0.1 #0.1
+dist = 0
 
+# rotate around y
 camera_pose = np.array([
-    [np.cos(alpha), 0, np.sin(alpha), np.sin(alpha) * dist],
-    [0, 1, 0, height],
-    [-np.sin(alpha), 0, np.cos(alpha), np.cos(alpha) * dist],
+    [np.cos(alpha), 0, np.sin(alpha), np.sin(alpha) * height],
+    [0, 1, 0, 0],
+    [-np.sin(alpha), 0, np.cos(alpha), np.cos(alpha) * height],
     [0, 0, 0, 1]
 ])
+
+
+#rotate around z
+#camera_pose = np.array([
+#    [np.cos(alpha), np.sin(alpha), 0, np.sin(alpha) * dist],
+#    [-np.sin(alpha), np.cos(alpha), 0, np.cos(alpha) * dist],
+#    [0, 0, 1, height],
+#    [0, 0, 0, 1]
+#])
+
+
+
 
 light_pose = np.array([
     [1,0,0,0.2],
     [0,1,0,0],
-    [0,0,1,0],
+    [0,0,1,1],
     [0,0,0,1]
 ])
 
@@ -124,11 +142,11 @@ def press(event):
         global scene
         global ax0
         global sc
-        alpha += np.radians(30)
+        alpha += np.radians(1)
         camera_pose = np.array([
-            [np.cos(alpha), 0, np.sin(alpha), np.sin(alpha) * dist],
+            [np.cos(alpha), 0, np.sin(alpha), np.sin(alpha) * height],
             [0, 1, 0, 0],
-            [-np.sin(alpha), 0, np.cos(alpha), np.cos(alpha) * dist],
+            [-np.sin(alpha), 0, np.cos(alpha), np.cos(alpha) * height],
             [0, 0, 0, 1]
         ])
         scene.set_pose(nc, pose=camera_pose)

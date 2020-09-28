@@ -2,97 +2,66 @@ import numpy as np
 from autolab_core import RigidTransform
 import pickle
 import subprocess
+import argparse
 
+# command arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('grasp', type=int)
+args = parser.parse_args()
 
 # read grasps
-with open('/home/gregor/Share/Festo/grasp_list.pkl', 'rb') as f:
+with open('/home/gregor/Share/Festo/aligned_grasps_list.pkl', 'rb') as f:
     grasps = pickle.load(f)
-g_i = 10
-sp_i = 10
-print("### Grasp ###")
-print(grasps[g_i])
 
-with open('/home/gregor/Share/Festo/stable_poses_list.pkl', 'rb') as f:
-    stable_poses = pickle.load(f)
-print("### Stable Pose ###")
-print(stable_poses[1])
-
-# find grasps in plane
-valid_grasps = list()
-for grasp in grasps:
-    for sp in stable_poses:
-        grasp_vector = grasp[1]
-        # create trans matirx
-        trans = np.empty((4, 4))
-        trans[:3, :3] = sp[0].rotation
-        trans[:3, 3] = sp[0].translation
-        trans[3, :] = [0,0,0,1]
-        
-        # find angle to world y axis
-        grasp_vector = trans.dot(np.append(grasp_vector, [0]))
-        grasp_vector = grasp_vector[0:3]
-        unit_gv = grasp_vector / np.linalg.norm(grasp_vector)
-        angle = np.arccos(np.dot(unit_gv, [0, 1, 0]))
-        angle = np.rad2deg(angle)
-        if angle > 85 and angle < 95:
-            valid_grasps.append((grasp, sp, angle)) 
-
-vg_i = 2
+vg_i = args.grasp
 
 # create command
-grasp = valid_grasps[vg_i][0]
-stable_pose = valid_grasps[vg_i][1]
-#print(grasp)
+grasp = grasps[vg_i]
 
-# test
-grasp_vector = grasp[1]
+print("axis: ")
+print(grasp['axis'])
 
-# create trans matirx
-#trans = np.empty((4, 4))
-#trans[:3, :3] = stable_pose[0].rotation
-#trans[:3, 3] = stable_pose[0].translation
-#trans[3, :] = [0,0,0,1]
+print("T_obj_table")
+print(grasp['T_obj_table'])
 
-#print(trans)
+print("T_table_obj")
+print(grasp['T_table_obj'])
 
-# find angle to world y axis
-#print(grasp_vector)
-#grasp_vector = trans.dot(np.append(grasp_vector, [0]))
-#grasp_vector = grasp_vector[0:3]
-#print(grasp_vector)
-#unit_gv = grasp_vector / np.linalg.norm(grasp_vector)
-#print(grasp_vector)
-#print(np.dot(unit_gv, [0, 1, 0]))
-#angle = np.arccos(np.dot(unit_gv, [0, 1, 0]))
-#angle = np.rad2deg(angle)
-#print(angle)
-###
+print('T_obj_world')
+print(grasp['T_obj_world'])
+
+print("table_pose:")
+print(grasp['table_pose'])
 
 
-print("Angle: %f" % valid_grasps[vg_i][2])
+
+print("close_width: %f" % grasp["close_width"])
+print("approach_angle: %f" % grasp["approach_angle"])
+
+stable_pose = grasp['table_pose']
 
 grasp_string = list()
-for i in grasp[0].translation:
+for i in grasp["grasp_T"].translation:
     grasp_string.append(format(i, 'f'))
 grasp_string.append('1')
 
 
 vector_string = list()
-for i in grasp[1]:
+for i in grasp["axis"]:
     vector_string.append(format(i, 'f'))
 vector_string.append('1')
 
 
 pose_string = list()
-for e, i in enumerate(stable_pose[0].translation):
-    for j in stable_pose[0].rotation[e]:
+for e, i in enumerate(stable_pose.translation):
+    for j in stable_pose.rotation[e]:
         pose_string.append(format(j, 'f'))
     pose_string.append(format(i, 'f'))
 
 pose_string = pose_string + ['0', '0', '0', '1']
 
 # Build process call
-call_list = ["python3", "render-depth.py", "--mesh", "/home/gregor/Share/Festo/0024_2439.uf_proc.obj", "--pose"]
+call_list = ["python2", "render-depth.py", "--mesh", "/home/gregor/Share/Festo/0024_2439.uf_proc.obj", "--pose"]
 call_list += pose_string
 call_list.append("--grasp_center")
 call_list += grasp_string

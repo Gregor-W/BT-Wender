@@ -98,6 +98,8 @@ sed -i 's/meshlabserver -i/xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -
 
 # scp
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.191.177.49:/home/ubuntu/egad/egad/singularity/install-log.txt G/Hochschule/
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/singularity.def ubuntu@18.191.177.49:/home/ubuntu/egad/egad/singularity/
+
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/dexnet-create-image.py ubuntu@18.191.177.49:/home/ubuntu/test-dexnet/deps/meshpy/build
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/convert-point-cloud.py ubuntu@18.191.177.49:/home/ubuntu/ggcnn/ggcnn
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem -r ubuntu@18.191.177.49:/home/ubuntu/egad/depth-images G/Hochschule/Festo/egad_data/depth

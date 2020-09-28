@@ -61,20 +61,47 @@ From: ubuntu:18.04
         autotools-dev \
         libicu-dev \
         libbz2-dev \
+		libxml2-dev \
+		libeigen3-dev \
         
     mkdir -p /home/co
-    
+  
     # Install libspatialindex
     cd /home/co
-
-    wget https://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.gz
-    tar -zxvf boost_1_60_0.tar.gz
-    cd boost_1_60_0
+	
+	
+    #wget https://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.gz
+    #tar -zxvf boost_1_60_0.tar.gz
+    #cd boost_1_60_0
+    #./bootstrap.sh
+    #./b2
+    #./b2 install
+    #cd ..
+	
+	wget http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz
+	tar -zxvf boost_1_59_0.tar.gz
+    cd boost_1_59_0
     ./bootstrap.sh
     ./b2
     ./b2 install
     cd ..
-
+	
+	
+	git clone https://github.com/crigroup/openrave-installation.git
+	cd openrave-installation
+	sed -i 's/sudo/ /g' install-dependencies.sh
+	sed -i 's+BOOST_SRC_DIR=~/git/boost_1_58_0+BOOST_SRC_DIR=../boost_1_59_0+g' install-dependencies.sh
+	
+	sed -i 's/sudo/ /g' install-osg.sh
+	sed -i 's/sudo/ /g' install-fcl.sh
+	sed -i 's/sudo/ /g' install-openrave.sh
+	
+	./install-dependencies.sh
+	./install-osg.sh
+	./install-fcl.sh
+	./install-openrave.sh
+	cd ..
+	
 
     wget https://download.osgeo.org/libspatialindex/spatialindex-src-1.7.0.tar.gz
     tar -xzf spatialindex-src-1.7.0.tar.gz
@@ -96,7 +123,8 @@ From: ubuntu:18.04
     pip2 install numpy==1.16.5 scipy==1.2.2 scikit-learn==0.20.4 scikit-image==0.14.5 opencv-python==4.1.2.30 pyassimp tensorflow==2.0.0 h5py networkx==2.2
     pip2 install imageio==2.6.1
     pip2 install vtk
-    pip2 install mayavi
+	# Error for mayavi
+    #pip2 install mayavi
     pip2 install matplotlib==2.2.4 multiprocess dill cvxopt ipython==5.8.0 Pillow==6.2.1 setproctitle trimesh
     pip2 install pyhull
     pip2 install ffmpeg-python
@@ -125,9 +153,37 @@ From: ubuntu:18.04
     sh install.sh
 	echo 'export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH' >>$SINGULARITY_ENVIRONMENT
     cd ..
-
+	
+	
     # return to dex-net directory
-    
+	# Install openrave
+	#mkdir openrave
+	#cd openrave
+	
+	#git clone https://github.com/danfis/libccd.git
+	#cd libccd
+	#mkdir build && cd build
+	#cmake -G "Unix Makefiles" ..
+	#make && make install
+	#cd ..
+	#cd ..
+	
+	#git clone https://github.com/flexible-collision-library/fcl.git
+	#cd fcl
+	#mkdir build
+	#cd build
+	#cmake ..
+	#cd ..
+	#cd ..
+	
+	#git clone --branch latest_stable https://github.com/rdiankov/openrave.git
+	#cd openrave
+	#make
+    #make install
+	#rm build/CMakeCache.txt
+	#cd ..
+	#cd ..
+	
     # install meshpy
     cd meshpy
     pip2 install -e .
@@ -183,6 +239,7 @@ From: ubuntu:18.04
 
 %environment
     TMPDIR=/tmp
+	LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
 
 %apprun datasetgen
     cd /home/co/egad/scripts
