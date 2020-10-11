@@ -15,7 +15,9 @@ from dexnet.grasping.gripper import RobotGripper
 from dexnet.grasping.grasp_sampler import AntipodalGraspSampler
 from dexnet.grasping.graspable_object import GraspableObject3D
 from dexnet.grasping.grasp_quality_config import GraspQualityConfigFactory
-from dexnet.grasping.grasp_quality_function import GraspQualityFunctionFactory
+from dexnet.grasping.grasp_quality_function import GraspQualityFunctionFactory, QuasiStaticQualityFunction
+
+
 from dexnet.grasping import GraspCollisionChecker
 
 from autolab_core import NormalCloud, PointCloud, RigidTransform
@@ -27,15 +29,15 @@ from meshpy.mesh_renderer import ViewsphereDiscretizer, VirtualCamera
 from visualization import Visualizer2D as vis
 
 import pickle
+from Render import get_grasp
 
 output = "/home/ubuntu/egad/grasp-data/test-object0"
-temp_dir = "/tmp/obj-files"
+mp_cache = '/home/ubuntu/egad/grasp-data/object-files'
 
 # Use local config file
-#config_path = '/home/ubuntu/egad/egad/scripts/cfg/dexnet_api_settings.yaml'
-grasp_config = YamlConfig(str('/home/ubuntu/test-dexnet/test/config.yaml'))
-config = YamlConfig("/home/ubuntu/test-dexnet/cfg/tools/generate_gqcnn_dataset.yaml")
-render_config = YamlConfig("/home/ubuntu/egad/config/dexnet-settings.yaml")
+egad_path = YamlConfig('/home/ubuntu/egad/egad/scripts/cfg/dexnet_api_settings.yaml')
+grasp_config = YamlConfig('/home/ubuntu/test-dexnet/test/config.yaml') # DEXNET test config
+coll_vis_config = YamlConfig("/home/ubuntu/test-dexnet/cfg/tools/generate_gqcnn_dataset.yaml")
 
 
 stable_pose_min_p = 0
@@ -44,7 +46,7 @@ stable_pose_min_p = 0
 os.chdir(str(Path(dexnet.__file__).resolve().parent.parent.parent))
 
 # setup grasp params
-table_alignment_params = config['table_alignment']
+table_alignment_params = coll_vis_config['table_alignment']
 min_grasp_approach_offset = -np.deg2rad(table_alignment_params['max_approach_offset'])
 max_grasp_approach_offset = np.deg2rad(table_alignment_params['max_approach_offset'])
 max_grasp_approach_table_angle = np.deg2rad(table_alignment_params['max_approach_table_angle'])
@@ -63,20 +65,24 @@ while phi <= max_grasp_approach_offset:
     phi_offsets.append(phi)
     phi += phi_inc
 
-coll_check_params = config['collision_checking']
+coll_check_params = coll_vis_config['collision_checking']
 approach_dist = coll_check_params['approach_dist']
 delta_approach = coll_check_params['delta_approach']
 table_offset = coll_check_params['table_offset']
 table_mesh_filename = coll_check_params['table_mesh_filename']
 
+# convert quality value to percent, copied from egad
+scale_min = 0.0005
+scale_max = 0.004
+def convert_quality(q):
+    max(min(q, scale_max), scale_min)
+    q_percent = (q - scale_min)/(scale_max - scale_min) * 100
+    return q_percent
 
 
 # Write aligned grasps to pickle 
 def grasp_depth_images(dir_path, mesh_file):
-    #mp_cache = tempfile.mkdtemp()
-    
-    mp_cache = '/home/ubuntu/egad/grasp-data/object-files'
-    
+    #mp_cache = tempfile.mkdtemp()-
     # prepare mesh and +generate Grasps
     mesh_processor = mp.MeshProcessor(os.path.join(dir_path, mesh_file), mp_cache)
     mesh_processor.generate_graspable(grasp_config)
@@ -90,8 +96,13 @@ def grasp_depth_images(dir_path, mesh_file):
     collision_checker = GraspCollisionChecker(gripper)
     collision_checker.set_graspable_object(obj)
     
+    # setup Grasp Quality Function
+    metric_config = GraspQualityConfigFactory().create_config(egad_path['metrics']['ferrari_canny'])
+    quality_fn = GraspQualityFunctionFactory.create_quality_function(obj, metric_config)
+    # https://github.com/BerkeleyAutomation/dex-net/blob/0f63f706668815e96bdeea16e14d2f2b266f9262/src/dexnet/grasping/quality.py
+    
     grasps_trans = list()
-
+    
     # read in the stable poses of the mesh
     stable_poses = mesh_processor.stable_poses
     for i, stable_pose in enumerate(stable_poses):
@@ -125,21 +136,27 @@ def grasp_depth_images(dir_path, mesh_file):
                         break
 
                 # visualize
-                if collision_free:
-                    grasps_trans.append({"grasp_T": aligned_grasp.T_grasp_obj,
+                if (collision_free and aligned_grasp.close_fingers(obj)[0]):
+                    #print(aligned_grasp.close_fingers(obj))
+                    #print(aligned_grasp.close_fingers(obj)[1][1].point)
+                    quality = convert_quality(quality_fn(aligned_grasp).quality)
+                    #print(quality)
+                    
+                    grasps_trans.append({"mesh": mesh_file.replace("uf.obj", "uf_proc.obj"),
+                                         "grasp_T": aligned_grasp.T_grasp_obj,
                                          "axis": aligned_grasp.axis,
                                          "close_width": aligned_grasp.close_width,
-                                         "approach_angle": aligned_grasp.approach_angle,
-                                         "T_obj_table": stable_pose.T_obj_table,
-                                         "T_table_obj": stable_pose.T_obj_table.inverse(),
-                                         "T_obj_world": stable_pose.T_obj_world,
-                                         "table_pose": T_table_obj})
+                                         "table_pose": T_table_obj,
+                                         "contact0": aligned_grasp.close_fingers(obj)[1][0].point,
+                                         "contact1": aligned_grasp.close_fingers(obj)[1][1].point,
+                                         "quality": quality})
+                                            
     
     print("found %d grasps, writing to file" % len(grasps_trans))
     
-    with open(os.path.join(output, 'aligned_grasps_list.pkl'), 'wb') as out:
+    with open(os.path.join(output, mesh_file.replace(".uf.obj", "") + '_aligned_grasps_list.pkl'), 'wb') as out:
             pickle.dump(grasps_trans, out)
-
+    #get_grasp.generate_depth_images(grasps_trans, output, os.path.join(dir_path, mesh_file))
 
 mesh_files_dir = "/home/ubuntu/egad/output/1589817197/pool"
 
@@ -149,8 +166,10 @@ obj_files = [f for f in all_files if f.endswith('.obj')]
 
 # filter mesh files
 filter_mesh_files = '0024'
+
 mesh_files = [f for f in obj_files if f.split('_')[0] == filter_mesh_files]
 mesh_files = [mesh_files[1]]
+#mesh_files = obj_files
 
 print(mesh_files)
 
