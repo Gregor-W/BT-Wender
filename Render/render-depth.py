@@ -2,7 +2,6 @@ import numpy as np
 import trimesh
 import pyrender
 import matplotlib.pyplot as plt
-matplotlib.use('agg')
 import argparse
 
 # command arguments
@@ -10,7 +9,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mesh')
 parser.add_argument('--pose', nargs='*', type=float)
 parser.add_argument('--grasp_center', nargs='*', type=float)
-parser.add_argument('--grasp_vector', nargs='*', type=float)
+parser.add_argument('--contact_p0', nargs='*', type=float)
+parser.add_argument('--contact_p1', nargs='*', type=float)
 args = parser.parse_args()
 
 # convert point in obj coords to point on image
@@ -122,18 +122,50 @@ color, depth = r.render(scene)
 pro_matrix = camera.get_projection_matrix(img_w, img_h)
 
 
-s_point = np.array(args.grasp_center)
+s_point = np.array([args.grasp_center[3], args.grasp_center[7],
+                    args.grasp_center[11], args.grasp_center[15]])
 
-grasp_vector = np.array(args.grasp_vector)
-s_outer_point0 = grasp_vector * 0.05 + s_point
-s_outer_point1 = grasp_vector * -0.05 + s_point
 
-(x0, y0) = convert_object_point_to_img(s_point, obj_pose, camera_pose, pro_matrix)
-(x1, y1) = convert_object_point_to_img(s_outer_point0, obj_pose, camera_pose, pro_matrix)
-(x2, y2) = convert_object_point_to_img(s_outer_point1, obj_pose, camera_pose, pro_matrix)
+T_grasp_obj = np.array([
+    args.grasp_center[0: 4],
+    args.grasp_center[4: 8],
+    args.grasp_center[8: 12],    
+    args.grasp_center[12: 16]
+])
 
-print(x0)
-print(y0)
+
+#grasp_vector = np.array(args.grasp_vector)
+contact_p0 = np.array(args.contact_p0)
+contact_p1 = np.array(args.contact_p1)
+print(contact_p0)
+print(contact_p1)
+
+points = []
+
+width = np.linalg.norm(contact_p0 - contact_p1)
+
+points.append(contact_p0)
+points.append(contact_p1)
+points.append(s_point)
+points.append(T_grasp_obj.dot([0, 0.75 * width, 0, 0]) + s_point)
+points.append(T_grasp_obj.dot([0, -0.75 * width, 0, 0]) + s_point)
+# T_grasp_obj.dot([0, 1, 0, 1]) == grasp_vector
+
+# test point
+#points.append(T_grasp_obj.dot([0, 0.05, 0.05, 0]) + s_point)
+
+
+points_conv = [convert_object_point_to_img(p, obj_pose, camera_pose, pro_matrix) for p in points]
+
+
+#(x0, y0) = convert_object_point_to_img(points[0], obj_pose, camera_pose, pro_matrix)
+#(x1, y1) = convert_object_point_to_img(s_outer_point0, obj_pose, camera_pose, pro_matrix)
+#(x2, y2) = convert_object_point_to_img(s_outer_point1, obj_pose, camera_pose, pro_matrix)
+
+
+#print(x0)
+#print(y0)
+#print(points_conv[0])
 
 # rotate view and update view
 def press(event):
@@ -142,7 +174,7 @@ def press(event):
         global scene
         global ax0
         global sc
-        alpha += np.radians(1)
+        alpha += np.radians(30)
         camera_pose = np.array([
             [np.cos(alpha), 0, np.sin(alpha), np.sin(alpha) * height],
             [0, 1, 0, 0],
@@ -151,28 +183,31 @@ def press(event):
         ])
         scene.set_pose(nc, pose=camera_pose)
         color, depth = r.render(scene)
-        (x0, y0) = convert_object_point_to_img(s_point, obj_pose, camera_pose, pro_matrix)
-        (x1, y1) = convert_object_point_to_img(s_outer_point0, obj_pose, camera_pose, pro_matrix)
-        (x2, y2) = convert_object_point_to_img(s_outer_point1, obj_pose, camera_pose, pro_matrix)
+        #(x0, y0) = convert_object_point_to_img(s_point, obj_pose, camera_pose, pro_matrix)
+        #(x1, y1) = convert_object_point_to_img(s_outer_point0, obj_pose, camera_pose, pro_matrix)
+        #(x2, y2) = convert_object_point_to_img(s_outer_point1, obj_pose, camera_pose, pro_matrix)
+        
+        points_conv = [convert_object_point_to_img(p, obj_pose, camera_pose, pro_matrix) for p in points]
         
         for s in sc:
             s.remove()
         
-        ax0.axis('off')
-        ax0.imshow(color)        
-        sc[0] = ax0.scatter(x0,y0)
-        sc[1] = ax0.scatter(x1,y1)
-        sc[2] = ax0.scatter(x2,y2)
+        sc = []
         
+        ax0.imshow(color)
+        
+        for p in points_conv:
+           sc.append(ax0.scatter(p[0], p[1]))
+
+        ax1 = plt.subplot(1,2,2)
         ax1.axis('off')
         ax1.imshow(depth, cmap=plt.cm.gray_r)
-        sc[3] = ax1.scatter(x0,y0)
-        sc[4] = ax1.scatter(x1,y1)
-        sc[5] = ax1.scatter(x2,y2)
-        
+
+        for p in points_conv:
+           sc.append(ax1.scatter(p[0], p[1]))
         plt.draw()
 
-sc = [None] * 6
+sc = []
 
 # First plot
 fig = plt.figure()
@@ -180,13 +215,15 @@ fig.canvas.mpl_connect('key_press_event', press)
 ax0 = plt.subplot(1,2,1)
 ax0.axis('off')
 ax0.imshow(color)
-sc[0] = ax0.scatter(x0,y0)
-sc[1] = ax0.scatter(x1,y1)
-sc[2] = ax0.scatter(x2,y2)
+
+for p in points_conv:
+   sc.append(ax0.scatter(p[0], p[1]))
+
 ax1 = plt.subplot(1,2,2)
 ax1.axis('off')
 ax1.imshow(depth, cmap=plt.cm.gray_r)
-sc[3] = ax1.scatter(x0,y0)
-sc[4] = ax1.scatter(x1,y1)
-sc[5] = ax1.scatter(x2,y2)
+
+for p in points_conv:
+   sc.append(ax1.scatter(p[0], p[1]))
+
 plt.show()
