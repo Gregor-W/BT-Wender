@@ -7,6 +7,7 @@ import os
 import tempfile
 import shutil
 from pathlib2 import Path
+import subprocess
 
 from autolab_core import YamlConfig
 import dexnet
@@ -16,30 +17,33 @@ from dexnet.grasping.grasp_sampler import AntipodalGraspSampler
 from dexnet.grasping.graspable_object import GraspableObject3D
 from dexnet.grasping.grasp_quality_config import GraspQualityConfigFactory
 from dexnet.grasping.grasp_quality_function import GraspQualityFunctionFactory, QuasiStaticQualityFunction
-
-
 from dexnet.grasping import GraspCollisionChecker
 
 from autolab_core import NormalCloud, PointCloud, RigidTransform
-from meshpy import MaterialProperties, LightingProperties, ObjFile, VirtualCamera, ViewsphereDiscretizer, SceneObject
 
 import numpy as np
 from perception import CameraIntrinsics, RenderMode
-from meshpy.mesh_renderer import ViewsphereDiscretizer, VirtualCamera
 from visualization import Visualizer2D as vis
 
 import pickle
 from Render import get_grasp
 
-output = "/home/ubuntu/egad/grasp-data/test-object0"
-mp_cache = '/home/ubuntu/egad/grasp-data/object-files'
+# output directories
+pickle_output = "/home/ubuntu/egad/grasp-data/pickle-files"
+mesh_output = '/home/ubuntu/egad/grasp-data/object-files'
+
+# input egad folder with meshes
+mesh_files_dir = "/home/ubuntu/egad/output/1603106069/pool"
+
+# filter mesh files for egad generation
+filter_mesh_files = '0032'
 
 # Use local config file
 egad_path = YamlConfig('/home/ubuntu/egad/egad/scripts/cfg/dexnet_api_settings.yaml')
 grasp_config = YamlConfig('/home/ubuntu/test-dexnet/test/config.yaml') # DEXNET test config
 coll_vis_config = YamlConfig("/home/ubuntu/test-dexnet/cfg/tools/generate_gqcnn_dataset.yaml")
 
-
+# min stable pose probability
 stable_pose_min_p = 0
 
 # Requires data from the dexnet project.
@@ -52,6 +56,7 @@ max_grasp_approach_offset = np.deg2rad(table_alignment_params['max_approach_offs
 max_grasp_approach_table_angle = np.deg2rad(table_alignment_params['max_approach_table_angle'])
 num_grasp_approach_samples = table_alignment_params['num_approach_offset_samples']
 
+# paramet for alignement of grasps
 phi_offsets = []
 if max_grasp_approach_offset == min_grasp_approach_offset:
     phi_inc = 1
@@ -65,6 +70,7 @@ while phi <= max_grasp_approach_offset:
     phi_offsets.append(phi)
     phi += phi_inc
 
+# setup collision params for alignment
 coll_check_params = coll_vis_config['collision_checking']
 approach_dist = coll_check_params['approach_dist']
 delta_approach = coll_check_params['delta_approach']
@@ -82,11 +88,11 @@ def convert_quality(q):
 
 # Write aligned grasps to pickle 
 def grasp_depth_images(dir_path, mesh_file):
-    #mp_cache = tempfile.mkdtemp()-
+    #mesh_output = tempfile.mkdtemp()-
     # prepare mesh and +generate Grasps
-    mesh_processor = mp.MeshProcessor(os.path.join(dir_path, mesh_file), mp_cache)
+    mesh_processor = mp.MeshProcessor(os.path.join(dir_path, mesh_file), mesh_output)
     mesh_processor.generate_graspable(grasp_config)
-
+    
     gripper = RobotGripper.load('yumi_metal_spline', gripper_dir=grasp_config['gripper_dir'])
     sampler = AntipodalGraspSampler(gripper, grasp_config)
     obj = GraspableObject3D(mesh_processor.sdf, mesh_processor.mesh)
@@ -105,6 +111,7 @@ def grasp_depth_images(dir_path, mesh_file):
     
     # read in the stable poses of the mesh
     stable_poses = mesh_processor.stable_poses
+    # find aligned grasps for each stable pose
     for i, stable_pose in enumerate(stable_poses):
         # render images if stable pose is valid
         if stable_pose.p > stable_pose_min_p:
@@ -117,7 +124,9 @@ def grasp_depth_images(dir_path, mesh_file):
 
             # align grasps with the table
             aligned_grasps = [grasp.perpendicular_table(stable_pose) for grasp in grasps]
-
+            
+            grasp_data = list()
+            
             # check grasp validity
             for aligned_grasp in aligned_grasps:
                 # check angle with table plane and skip unaligned grasps
@@ -142,37 +151,46 @@ def grasp_depth_images(dir_path, mesh_file):
                     quality = convert_quality(quality_fn(aligned_grasp).quality)
                     #print(quality)
                     
-                    grasps_trans.append({"mesh": mesh_file.replace("uf.obj", "uf_proc.obj"),
-                                         "grasp_T": aligned_grasp.T_grasp_obj,
-                                         "axis": aligned_grasp.axis,
-                                         "close_width": aligned_grasp.close_width,
-                                         "table_pose": T_table_obj,
-                                         "contact0": aligned_grasp.close_fingers(obj)[1][0].point,
-                                         "contact1": aligned_grasp.close_fingers(obj)[1][1].point,
-                                         "quality": quality})
+                    # add to grasp list for single grasp and stable pose
+                    grasp_data.append({"grasp_T": aligned_grasp.T_grasp_obj.matrix,
+                                       "contact0": aligned_grasp.close_fingers(obj)[1][0].point,
+                                       "contact1": aligned_grasp.close_fingers(obj)[1][1].point,
+                                       "quality": quality})
+                                       
+            # add to total mesh+stableposes list        
+            grasps_trans.append({"mesh": mesh_file.replace("uf.obj", "uf_proc.obj"),
+                                 "table_pose": T_table_obj.matrix,
+                                 "grasps": grasp_data
+                                })
                                             
     
+    # write pickle file
     print("found %d grasps, writing to file" % len(grasps_trans))
-    
-    with open(os.path.join(output, mesh_file.replace(".uf.obj", "") + '_aligned_grasps_list.pkl'), 'wb') as out:
+    with open(os.path.join(pickle_output, mesh_file.replace(".uf.obj", "") + '_aligned_grasps_list.pkl'), 'wb') as out:
             pickle.dump(grasps_trans, out)
-    #get_grasp.generate_depth_images(grasps_trans, output, os.path.join(dir_path, mesh_file))
+    #get_grasp.generate_depth_images(grasps_trans, pickle_output, os.path.join(dir_path, mesh_file))
 
-mesh_files_dir = "/home/ubuntu/egad/output/1589817197/pool"
+# make dirs
+if not os.path.exists(pickle_output):
+    os.makedirs(pickle_output)
+
+if not os.path.exists(mesh_output):
+    os.makedirs(mesh_output)
 
 # get list of all mesh files
 all_files = os.listdir(mesh_files_dir)
 obj_files = [f for f in all_files if f.endswith('.obj')]
 
-# filter mesh files
-filter_mesh_files = '0024'
+# Check and apply filter
+if filter_mesh_files is None or filter_mesh_files == "":
+    mesh_files = [mesh_files[1]]
+else:
+    mesh_files = [f for f in obj_files if f.split('_')[0] == filter_mesh_files]
 
-mesh_files = [f for f in obj_files if f.split('_')[0] == filter_mesh_files]
-mesh_files = [mesh_files[1]]
-#mesh_files = obj_files
 
-print(mesh_files)
+print("%d mesh files found" % len(mesh_files))
 
-for m in mesh_files:
+for e, m in enumerate(mesh_files):
+    print("%d out of %d mesh files" % (e, len(mesh_files)))
     grasp_depth_images(mesh_files_dir, m)
-
+    subprocess.call(["rm" , os.path.join(mesh_output, "*.sdf")])

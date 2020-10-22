@@ -130,7 +130,51 @@ From: ubuntu:18.04
     pip2 install ffmpeg-python
     pip2 install pathlib2
 	pip2 install shapely
-
+	
+	# Pyrender requirements
+	mkdir -p pyrender
+	cd pyrender
+	#wget https://github.com/mmatl/travis_debs/raw/master/xenial/mesa_18.3.3-0.deb
+	#dpkg -i ./mesa_18.3.3-0.deb || true
+	#apt install -y -f
+	
+	apt-get install -y llvm-6.0 freeglut3 freeglut3-dev
+	wget ftp://ftp.freedesktop.org/pub/mesa/mesa-18.3.3.tar.gz
+	tar xfv mesa-18.3.3.tar.gz
+	cd mesa-18.3.3
+	./configure --prefix=/usr/local                           \
+            --enable-opengl --disable-gles1 --disable-gles2   \
+            --disable-va --disable-xvmc --disable-vdpau       \
+            --enable-shared-glapi                             \
+            --disable-texture-float                           \
+            --enable-gallium-llvm --enable-llvm-shared-libs   \
+            --with-gallium-drivers=swrast,swr                 \
+            --disable-dri --with-dri-drivers=                 \
+            --disable-egl --with-egl-platforms= --disable-gbm \
+            --disable-glx                                     \
+            --disable-osmesa --enable-gallium-osmesa          \
+            ac_cv_path_LLVM_CONFIG=llvm-config-6.0
+	make -j8
+	make install		
+	cd ..
+	
+	#git clone git@github.com:mmatl/pyopengl.git
+	#pip3 install ./pyopengl
+	#pip3 install PyOpenGL PyOpenGL_accelerate
+	
+	
+	pip3 uninstall -y PyOpenGL PyOpenGL_accelerate
+	git clone https://github.com/mmatl/pyopengl.git
+	cd pyopengl
+	python3 setup.py develop
+	cd accelerate
+	python3 setup.py develop
+	cd ..
+	cd ..
+	
+	pip3 install pyrender
+	
+	
     # Install Dex-Net and dependencies.
     mkdir -p /home/co/dexnet
     cd /home/co/dexnet
@@ -237,6 +281,9 @@ From: ubuntu:18.04
     cd egad
     pip3 install -e .
 
+	
+	cd ..
+	
 %environment
     TMPDIR=/tmp
 	LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH

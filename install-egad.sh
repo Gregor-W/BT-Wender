@@ -1,5 +1,7 @@
 #!/bin/bash
 
+
+
 #### EGAD ####
 # Basic
 sudo apt install libspatialindex-dev python-rtree
@@ -49,4 +51,4 @@ sudo singularity build --tmpdir ~/egad/build-tmp egad.sif singularity.def
 # sudo singularity build egad.sif singularity.def &> install-log.txt
 
 # Pointcloud
-pip install pypcd
+#pip install pypcd
