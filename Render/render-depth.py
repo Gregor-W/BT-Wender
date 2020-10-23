@@ -3,14 +3,12 @@ import trimesh
 import pyrender
 import matplotlib.pyplot as plt
 import argparse
+import pickle
+import os
 
 # command arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--mesh')
-parser.add_argument('--pose', nargs='*', type=float)
-parser.add_argument('--grasp_center', nargs='*', type=float)
-parser.add_argument('--contact_p0', nargs='*', type=float)
-parser.add_argument('--contact_p1', nargs='*', type=float)
+parser.add_argument('grasp', type=int)
 args = parser.parse_args()
 
 # convert point in obj coords to point on image
@@ -27,50 +25,34 @@ def convert_object_point_to_img(s_point, obj_pose, camera_pose, proj_matrix):
     
     return x, y
 
+
+mesh_path = "/home/gregor/Festo/grasp-data/object-files"
+
+# read grasps
+with open('/home/gregor/Festo/grasp-data/test-object0/0024_2439_aligned_grasps_list.pkl', 'rb') as f:
+    grasp_data = pickle.load(f, encoding="latin1")
+
+vg_i = args.grasp
+
+sp = grasp_data[0]
+print(sp.keys())
+grasp = sp['grasps'][vg_i]
+
+
+
 scene = pyrender.Scene()
-
-# generate table
-#plane = trimesh.creation.box(extends=[0.02, 0.02, 0.02])
-#plane.visual.face_colors = [1, 0, 0.5, 0.5]
-#plane.fix_normals()
-#plane.export("table_mesh.obj")
-#table_obj = trimesh.load("table_mesh.obj")
-#table_mesh = pyrender.Mesh.from_trimesh(plane.smoothed(), smooth=False)
-#table_mesh = pyrender.Mesh.from_trimesh(plane)
-#table_mesh = pyrender.Mesh.from_trimesh(table_obj)
-#scene.add(table_mesh)
-
-#table_pose = np.array([
-#    [1,0,0,0],
-#    [0,0,1,-0.03],
-#    [0,-1,0,0],
-#    [0,0,0,1]
-#])
-
-#cyl = trimesh.creation.cylinder(1, height=0.02)
-#cyl_mesh = pyrender.Mesh.from_trimesh(cyl)
-#scene.add(cyl_mesh, pose=table_pose)
-
-
 table_trimesh = trimesh.load('~/Share/Festo/table.obj')
 table_mesh =  pyrender.Mesh.from_trimesh(table_trimesh)
 scene.add(table_mesh)
 
 
 # load mesh
-fuze_trimesh = trimesh.load(args.mesh)
+fuze_trimesh = trimesh.load(os.path.join(mesh_path, sp["mesh"]))
 mesh = pyrender.Mesh.from_trimesh(fuze_trimesh)
 
-# stable pose
-T_obj_table = np.array([
-    args.pose[0: 4],
-    args.pose[4: 8],
-    args.pose[8: 12],    
-    args.pose[12: 16]
-])
+obj_pose = sp['table_pose']
+obj_pose = np.linalg.inv(obj_pose)    
 
-#obj_pose = T_obj_table
-obj_pose = np.linalg.inv(T_obj_table)
 
 scene.add(mesh, pose=obj_pose)
 camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0)
@@ -88,16 +70,6 @@ camera_pose = np.array([
     [-np.sin(alpha), 0, np.cos(alpha), np.cos(alpha) * height],
     [0, 0, 0, 1]
 ])
-
-
-#rotate around z
-#camera_pose = np.array([
-#    [np.cos(alpha), np.sin(alpha), 0, np.sin(alpha) * dist],
-#    [-np.sin(alpha), np.cos(alpha), 0, np.cos(alpha) * dist],
-#    [0, 0, 1, height],
-#    [0, 0, 0, 1]
-#])
-
 
 
 
@@ -121,22 +93,14 @@ color, depth = r.render(scene)
 # draw grasp points
 pro_matrix = camera.get_projection_matrix(img_w, img_h)
 
+T_grasp_obj = grasp["grasp_T"]
+s_point = np.array([row[3] for row in T_grasp_obj])
 
-s_point = np.array([args.grasp_center[3], args.grasp_center[7],
-                    args.grasp_center[11], args.grasp_center[15]])
-
-
-T_grasp_obj = np.array([
-    args.grasp_center[0: 4],
-    args.grasp_center[4: 8],
-    args.grasp_center[8: 12],    
-    args.grasp_center[12: 16]
-])
 
 
 #grasp_vector = np.array(args.grasp_vector)
-contact_p0 = np.array(args.contact_p0)
-contact_p1 = np.array(args.contact_p1)
+contact_p0 = np.append(np.array(grasp["contact0"]), [1])
+contact_p1 = np.append(np.array(grasp["contact1"]), [1])
 print(contact_p0)
 print(contact_p1)
 
@@ -157,15 +121,6 @@ points.append(T_grasp_obj.dot([0, -0.75 * width, 0, 0]) + s_point)
 
 points_conv = [convert_object_point_to_img(p, obj_pose, camera_pose, pro_matrix) for p in points]
 
-
-#(x0, y0) = convert_object_point_to_img(points[0], obj_pose, camera_pose, pro_matrix)
-#(x1, y1) = convert_object_point_to_img(s_outer_point0, obj_pose, camera_pose, pro_matrix)
-#(x2, y2) = convert_object_point_to_img(s_outer_point1, obj_pose, camera_pose, pro_matrix)
-
-
-#print(x0)
-#print(y0)
-#print(points_conv[0])
 
 # rotate view and update view
 def press(event):
