@@ -1,6 +1,6 @@
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use('Agg')
+#import matplotlib.pyplot as plt
 
 import sys
 import os
@@ -18,30 +18,33 @@ from dexnet.grasping.graspable_object import GraspableObject3D
 from dexnet.grasping.grasp_quality_config import GraspQualityConfigFactory
 from dexnet.grasping.grasp_quality_function import GraspQualityFunctionFactory, QuasiStaticQualityFunction
 from dexnet.grasping import GraspCollisionChecker
-
 from autolab_core import NormalCloud, PointCloud, RigidTransform
 
 import numpy as np
-from perception import CameraIntrinsics, RenderMode
-from visualization import Visualizer2D as vis
 
 import pickle
-from Render import get_grasp
+import pathlib
+import datetime
+import argparse
 
 # output directories
-pickle_output = "/home/ubuntu/egad/grasp-data/pickle-files"
-mesh_output = '/home/ubuntu/egad/grasp-data/object-files'
+base_output = "/home/ubuntu/grasp-data"
 
 # input egad folder with meshes
-mesh_files_dir = "/home/ubuntu/egad/output/1603106069/pool"
+egad_input = "/home/ubuntu/egad-output"
+specific_mesh_files_dir = ""
 
 # filter mesh files for egad generation
-filter_mesh_files = '0032'
+filter_mesh_files = ''
+limit = 120
+
+dexnet_path = "/home/co/dexnet/"
+egad_path = "/home/ubuntu/egad/"
 
 # Use local config file
-egad_path = YamlConfig('/home/ubuntu/egad/egad/scripts/cfg/dexnet_api_settings.yaml')
-grasp_config = YamlConfig('/home/ubuntu/test-dexnet/test/config.yaml') # DEXNET test config
-coll_vis_config = YamlConfig("/home/ubuntu/test-dexnet/cfg/tools/generate_gqcnn_dataset.yaml")
+egad_path = YamlConfig(os.path.join(egad_path, "scripts/cfg/dexnet_api_settings.yaml"))
+grasp_config = YamlConfig(os.path.join(dexnet_path, "test/config.yaml")) # DEXNET test config
+coll_vis_config = YamlConfig(os.path.join(dexnet_path, "cfg/tools/generate_gqcnn_dataset.yaml"))
 
 # min stable pose probability
 stable_pose_min_p = 0
@@ -168,29 +171,71 @@ def grasp_depth_images(dir_path, mesh_file):
     print("found %d grasps, writing to file" % len(grasps_trans))
     with open(os.path.join(pickle_output, mesh_file.replace(".uf.obj", "") + '_aligned_grasps_list.pkl'), 'wb') as out:
             pickle.dump(grasps_trans, out)
-    #get_grasp.generate_depth_images(grasps_trans, pickle_output, os.path.join(dir_path, mesh_file))
-
-# make dirs
-if not os.path.exists(pickle_output):
-    os.makedirs(pickle_output)
-
-if not os.path.exists(mesh_output):
-    os.makedirs(mesh_output)
-
-# get list of all mesh files
-all_files = os.listdir(mesh_files_dir)
-obj_files = [f for f in all_files if f.endswith('.obj')]
-
-# Check and apply filter
-if filter_mesh_files is None or filter_mesh_files == "":
-    mesh_files = [mesh_files[1]]
-else:
-    mesh_files = [f for f in obj_files if f.split('_')[0] == filter_mesh_files]
 
 
-print("%d mesh files found" % len(mesh_files))
+if __name__ == "__main__":
+    # commandline arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('egad_input', type=str, nargs=1, help="Egad output folder containing generated 3D mesh obj files")
+    parser.add_argument('--output_dir', type=str, nargs=1, help="Output directory for converted meshes and pickle files")
+    
+    args = parser.parse_args()
+    egad_input = args.egad_input[0]
+    base_output = args.output_dir[0]
+    
+    print(egad_input)
+    
+    # get newest egad
+    if specific_mesh_files_dir is None or specific_mesh_files_dir == "":
+        folder = sorted(os.listdir(egad_input))[-1]
+        mesh_files_dir = os.path.join(egad_input, folder, "pool")
+    else:
+        mesh_files_dir = specific_mesh_files_dir
 
-for e, m in enumerate(mesh_files):
-    print("%d out of %d mesh files" % (e, len(mesh_files)))
-    grasp_depth_images(mesh_files_dir, m)
-    subprocess.call(["rm" , os.path.join(mesh_output, "*.sdf")])
+    print("using meshes from egad output: %s" % mesh_files_dir)
+
+    # get list of all mesh files
+    all_files = os.listdir(mesh_files_dir)
+    obj_files = [f for f in all_files if f.endswith('.obj')]
+
+    #output = os.path.join(base_output, datetime.datetime.now().strftime('%y%m%d_%H%M'))
+    output = os.path.join(base_output, folder)
+    pickle_output = os.path.join(output, "pickle-files")
+    mesh_output = os.path.join(output, "object-files")
+
+
+    # check if resume or new
+    if not os.path.exists(output):
+        os.makedirs(output)
+
+        # make dirs
+        if not os.path.exists(pickle_output):
+            os.makedirs(pickle_output)
+
+        if not os.path.exists(mesh_output):
+            os.makedirs(mesh_output)
+    else:
+        # check existing filenames for egad object names
+        already_done = [f[0:8] for f in os.listdir(pickle_output)]
+        obj_files = [f for f in obj_files if f[0:8] not in already_done]
+
+
+    # Check and apply filter
+    if filter_mesh_files is None or filter_mesh_files == "":
+        mesh_files = obj_files
+    else:
+        mesh_files = [f for f in obj_files if f.split('_')[0] == filter_mesh_files]
+
+    # Limit mesh files
+    if limit is not None and limit < len(mesh_files):
+        mesh_files = sorted(mesh_files)[0:limit]
+
+    print("%d mesh files found" % len(mesh_files))
+
+
+    # start grasp creation
+    for e, m in enumerate(mesh_files):
+        print("%d out of %d mesh files" % (e + 1, len(mesh_files)))
+        grasp_depth_images(mesh_files_dir, m)
+    # remove sdf files
+    subprocess.call(["rm" , os.path.join(mesh_output, "*.sdf")], shell=True)

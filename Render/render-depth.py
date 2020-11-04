@@ -1,7 +1,6 @@
 import numpy as np
 import trimesh
 import pyrender
-import matplotlib.pyplot as plt
 import argparse
 
 # command arguments

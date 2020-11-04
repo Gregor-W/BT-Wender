@@ -97,10 +97,10 @@ xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i ~/egad/test.uf.obj -o ~/e
 sed -i 's/meshlabserver -i/xvfb-run -a -s "-screen 0 800x600x24" meshlabserver -i/g' setup.py
 
 # scp
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.191.177.49:/home/ubuntu/egad/egad/singularity/install-log.txt G/Hochschule/
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/singularity.def ubuntu@18.191.177.49:/home/ubuntu/egad/egad/singularity/
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.224.109.247:/home/ubuntu/egad/singularity/install-log.txt G/Hochschule/
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/singularity.def ubuntu@18.224.109.247:/home/ubuntu/egad/singularity/
 
-scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/dexnet-create-image.py ubuntu@18.191.177.49:/home/ubuntu/test-dexnet/deps/meshpy/build
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/dexnet-create-image.py ubuntu@18.191.177.49:/home/ubuntu/BT-Wender/
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/convert-point-cloud.py ubuntu@18.191.177.49:/home/ubuntu/ggcnn/ggcnn
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem -r ubuntu@18.191.177.49:/home/ubuntu/egad/depth-images G/Hochschule/Festo/egad_data/depth
 
@@ -113,6 +113,11 @@ scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.191.177.49:/home/ub
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem -r ubuntu@18.191.177.49:/home/ubuntu/egad/grasp-data/test-object0 G/Hochschule/Festo/grasp-data
 
 
+# AWS GPU
+18.224.109.247
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.188.36.168:/home/ubuntu/
+scp -i ~/Wender-keypair.pem ubuntu@18.191.177.49:/home/ubuntu/egad/egad/singularity/egad.sif ~/egad/singularity
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/dexnet-create-image.py ubuntu@18.188.36.168:/home/ubuntu/BT-Wender/
 
 # uninstall boost
 sudo apt-get -y --purge remove libboost-all-dev libboost-doc libboost-dev
@@ -120,3 +125,21 @@ sudo apt-get -y --purge remove libboost-all-dev libboost-doc libboost-dev
 # view 3D obj
 ctmviewer /home/ubuntu/egad/obj-files/test.uf.obj
 
+# fix for pyrender
+https://github.com/duckietown/gym-duckietown#NoSuchDisplayException-Cannot-connect-to-None
+Xvfb :1 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset &> xvfb.log &
+test
+glxgears, glxinfo | grep render
+remove config in pyrender/pyrender/platforms/pyglet_platform.py
+
+# mount
+https://docs.aws.amazon.com/de_de/AWSEC2/latest/UserGuide/ebs-using-volumes.html
+
+# ggcnn
+https://chrisalbon.com/python/data_wrangling/break_list_into_chunks_of_equal_size/
+https://stackoverflow.com/questions/45393429/keras-how-to-save-model-and-continue-training
+
+# ggcnn memory
+https://github.com/tensorflow/tensorflow/issues/33030
+https://github.com/keras-team/keras/issues/5935
+https://www.tensorflow.org/guide/effective_tf2

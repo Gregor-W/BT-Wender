@@ -1,17 +1,24 @@
 # run egad
 cd ~/egad/egad/singularity
-singularity run -B ~/egad/output:/output --app datasetgen egad.sif
-cd ~/egad/output/1589817197/
-
+singularity run -B ~/egad-output:/output --app datasetgen egad.sif
+# continue previous egad
+singularity run -B ~/egad-output:/output --app datasetgen egad.sif --resume  
+ 
 # vizualize egad
 cd ~/egad/egad/scripts/
 python draw_map.py ~/egad/output/1589817197/
 # images are generated in
 ~/egad/output/1589817197/viz
+# search obj files
+find 0033* | wc -l
+
+
 
 # run bash in singularity
 singularity run egad.sif
-singularity run -B /home/ubuntu/test-dexnet/src/dexnet/database/mesh_processor.py:/home/co/dexnet/database/mesh_processor.py egad.sif
+python2 dexnet-create-image.py
+
+# meshpy
 cd /home/ubuntu/test-dexnet/deps/meshpy/build
 export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
-python2 dexnet-create-image.py
+

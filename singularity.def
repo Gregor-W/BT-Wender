@@ -69,15 +69,6 @@ From: ubuntu:18.04
     # Install libspatialindex
     cd /home/co
 	
-	
-    #wget https://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.gz
-    #tar -zxvf boost_1_60_0.tar.gz
-    #cd boost_1_60_0
-    #./bootstrap.sh
-    #./b2
-    #./b2 install
-    #cd ..
-	
 	wget http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz
 	tar -zxvf boost_1_59_0.tar.gz
     cd boost_1_59_0
@@ -87,14 +78,8 @@ From: ubuntu:18.04
     cd ..
 	
 	
-	git clone https://github.com/crigroup/openrave-installation.git
+	git clone https://github.com/Gregor-W/openrave-installation.git
 	cd openrave-installation
-	sed -i 's/sudo/ /g' install-dependencies.sh
-	sed -i 's+BOOST_SRC_DIR=~/git/boost_1_58_0+BOOST_SRC_DIR=../boost_1_59_0+g' install-dependencies.sh
-	
-	sed -i 's/sudo/ /g' install-osg.sh
-	sed -i 's/sudo/ /g' install-fcl.sh
-	sed -i 's/sudo/ /g' install-openrave.sh
 	
 	./install-dependencies.sh
 	./install-osg.sh
@@ -130,49 +115,6 @@ From: ubuntu:18.04
     pip2 install ffmpeg-python
     pip2 install pathlib2
 	pip2 install shapely
-	
-	# Pyrender requirements
-	mkdir -p pyrender
-	cd pyrender
-	#wget https://github.com/mmatl/travis_debs/raw/master/xenial/mesa_18.3.3-0.deb
-	#dpkg -i ./mesa_18.3.3-0.deb || true
-	#apt install -y -f
-	
-	apt-get install -y llvm-6.0 freeglut3 freeglut3-dev
-	wget ftp://ftp.freedesktop.org/pub/mesa/mesa-18.3.3.tar.gz
-	tar xfv mesa-18.3.3.tar.gz
-	cd mesa-18.3.3
-	./configure --prefix=/usr/local                           \
-            --enable-opengl --disable-gles1 --disable-gles2   \
-            --disable-va --disable-xvmc --disable-vdpau       \
-            --enable-shared-glapi                             \
-            --disable-texture-float                           \
-            --enable-gallium-llvm --enable-llvm-shared-libs   \
-            --with-gallium-drivers=swrast,swr                 \
-            --disable-dri --with-dri-drivers=                 \
-            --disable-egl --with-egl-platforms= --disable-gbm \
-            --disable-glx                                     \
-            --disable-osmesa --enable-gallium-osmesa          \
-            ac_cv_path_LLVM_CONFIG=llvm-config-6.0
-	make -j8
-	make install		
-	cd ..
-	
-	#git clone git@github.com:mmatl/pyopengl.git
-	#pip3 install ./pyopengl
-	#pip3 install PyOpenGL PyOpenGL_accelerate
-	
-	
-	pip3 uninstall -y PyOpenGL PyOpenGL_accelerate
-	git clone https://github.com/mmatl/pyopengl.git
-	cd pyopengl
-	python3 setup.py develop
-	cd accelerate
-	python3 setup.py develop
-	cd ..
-	cd ..
-	
-	pip3 install pyrender
 	
 	
     # Install Dex-Net and dependencies.
@@ -229,8 +171,8 @@ From: ubuntu:18.04
 	#cd ..
 	
     # install meshpy
-    cd meshpy
-    pip2 install -e .
+    #cd meshpy
+    #pip2 install -e .
     #mkdir build
     #cd build
     #cmake ..
@@ -238,7 +180,7 @@ From: ubuntu:18.04
     #cp meshpy/meshrender.so ../meshpy
     #cd ..
     #rm -rf build
-    cd ..
+    #cd ..
 
     # install all Berkeley AUTOLAB modules
     # autolab_core
@@ -291,3 +233,7 @@ From: ubuntu:18.04
 %apprun datasetgen
     cd /home/co/egad/scripts
     xvfb-run python3 generate_dataset.py ${@}
+
+%apprun dexnetgendataset
+	cd ~/BT-Wender
+	python2 dexnet-create-image.py
