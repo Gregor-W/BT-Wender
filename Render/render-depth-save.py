@@ -18,9 +18,6 @@ min_quality = 70
 debug = True
 
 
-
-
-
 # convert point in obj coords to point on image
 def convert_object_point_to_img(s_point, obj_pose, camera_pose, proj_matrix):
     # point to world coords
@@ -68,6 +65,7 @@ def check_counterclockwise(points, center):
         if p[0] > center[0] and p[1] >= center[1]:
             ccw = ccw and points[n + 1][1] < p[1]
     return ccw
+
        
 
 
@@ -98,7 +96,6 @@ if __name__ == "__main__":
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
     fig.add_axes(ax)
-
 
     print("total pickle files: %d" % len(files))
     for e, file in enumerate(files):
@@ -201,4 +198,3 @@ if __name__ == "__main__":
                         f.write(" ")
                         f.write("%.3f" % p[1])
                         f.write("\n")
-
