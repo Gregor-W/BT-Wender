@@ -7,7 +7,7 @@ cd ~
 
 #### EGAD ####
 # Basic
-sudo apt install libspatialindex-dev python-rtree
+sudo apt install -y libspatialindex-dev python-rtree
 git clone https://github.com/dougsm/egad.git 
 cd egad
 pip3 install -e .
@@ -23,7 +23,8 @@ sudo apt-get update && sudo apt-get install -y \
     wget \
     pkg-config \
     git \
-    cryptsetup-bin
+    cryptsetup-bin \
+	llvm-6.0
 
 # Go
 export VERSION=1.14.2 OS=linux ARCH=amd64 && \
@@ -43,7 +44,7 @@ export VERSION=3.5.3 && # adjust this as necessary \
 git clone https://github.com/sylabs/singularity.git && \
     cd singularity && \
     git checkout v${VERSION}
-l./mconfig && \
+./mconfig && \
     make -C ./builddir && \
     sudo make -C ./builddir install
 
@@ -53,18 +54,18 @@ cd ~/egad/singularity
 sudo singularity build --tmpdir ~/egad/build-tmp egad.sif singularity.def
 # sudo singularity build egad.sif singularity.def &> install-log.txt
 
-mkdir ~/egad-output
+
 
 # Pointcloud
 #pip install pypcd
 
 # Render depth images
 # Pyrender requirements
-mkdir -p pyrender
-cd pyrender
+mkdir -p ~/pyrender
+cd ~/pyrender
 wget https://github.com/mmatl/travis_debs/raw/master/xenial/mesa_18.3.3-0.deb
-dpkg -i ./mesa_18.3.3-0.deb || true
-apt install -y -f
+sudo dpkg -i ./mesa_18.3.3-0.deb || true
+sudo apt install -y -f
 
 #apt-get install -y llvm-6.0 freeglut3 freeglut3-dev
 #wget ftp://ftp.freedesktop.org/pub/mesa/mesa-18.3.3.tar.gz
@@ -86,8 +87,8 @@ apt install -y -f
 #make install		
 #cd ..
 
-git clone git@github.com:mmatl/pyopengl.git
-pip3 install ./pyopengl
+git clone https://github.com/mmatl/pyopengl.git
+pip install ./pyopengl
 #pip3 install PyOpenGL PyOpenGL_accelerate
 
 #pip3 uninstall -y PyOpenGL PyOpenGL_accelerate
@@ -99,18 +100,25 @@ pip3 install ./pyopengl
 #cd ..
 #cd ..
 
-pip3 install pyrender
-pip3 install trimesh
-pip install opencv-python
+pip install pyrender
+pip install trimesh
+#pip install opencv-python
 
 export PYOPENGL_PLATFORM=osmesa
 echo 'export PYOPENGL_PLATFORM=osmesa' >> ~/.bashrc
 
 # ggcnn
+cd ~
+git clone https://github.com/Gregor-W/ggcnn_development_features.git
+pip install keras
+pip install tensorflow
+
 pip install --upgrade --force-reinstall tensorflow-gpu==1.9.0
 
+
 #https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html
-tar -xzvf cudnn-10.0-linux-x64-v7.6.4.38.tgz
-sudo cp cuda/include/cudnn*.h /usr/local/cuda/include
-sudo cp cuda/lib64/libcudnn* /usr/local/cuda/lib64
-sudo chmod a+r /usr/local/cuda/include/cudnn*.h /usr/local/cuda/lib64/libcudnn*
+#tar -xzvf cudnn-10.0-linux-x64-v7.6.4.38.tgz
+#sudo cp cuda/include/cudnn*.h /usr/local/cuda/include
+#sudo cp cuda/lib64/libcudnn* /usr/local/cuda/lib64
+#sudo chmod a+r /usr/local/cuda/include/cudnn*.h /usr/local/cuda/lib64/libcudnn*
+

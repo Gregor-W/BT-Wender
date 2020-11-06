@@ -7,10 +7,6 @@ import os
 import pickle
 import cv2
 
-base_path = "/data/grasp-data/"
-folder = sorted(os.listdir(base_path))[-1]
-input_path = os.path.join(base_path, folder)
-
 img_w = 640
 img_h = 480
 dist = 0.15

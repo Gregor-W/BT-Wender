@@ -115,6 +115,7 @@ From: ubuntu:18.04
     pip2 install ffmpeg-python
     pip2 install pathlib2
 	pip2 install shapely
+	pip2 install pathlib
 	
 	
     # Install Dex-Net and dependencies.
@@ -171,16 +172,16 @@ From: ubuntu:18.04
 	#cd ..
 	
     # install meshpy
-    #cd meshpy
-    #pip2 install -e .
-    #mkdir build
-    #cd build
-    #cmake ..
-    #make
-    #cp meshpy/meshrender.so ../meshpy
-    #cd ..
-    #rm -rf build
-    #cd ..
+    cd meshpy
+    pip2 install -e .
+    mkdir build
+    cd build
+    cmake ..
+    make
+    cp meshpy/meshrender.so ../meshpy
+    cd ..
+    rm -rf build
+    cd ..
 
     # install all Berkeley AUTOLAB modules
     # autolab_core
@@ -236,4 +237,4 @@ From: ubuntu:18.04
 
 %apprun dexnetgendataset
 	cd ~/BT-Wender
-	python2 dexnet-create-image.py
+	python2 dexnet-create-image.py $@
