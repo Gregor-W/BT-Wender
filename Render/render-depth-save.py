@@ -151,6 +151,7 @@ if __name__ == "__main__":
             grasp_points = list()
             for grasp in grasps:
                 if grasp["quality"] >= min_quality:
+                    # only render if good grasps are found
                     render = True
                     T_grasp_obj = grasp["grasp_T"]
                     # grasps
@@ -163,15 +164,18 @@ if __name__ == "__main__":
                     width = np.linalg.norm(contact_p0 - contact_p1)
 
                     points = list()
+                    # create grasping rectangle
                     points.append(T_grasp_obj.dot([0, 0.75 * width, -0.01, 0]) + s_point)
                     points.append(T_grasp_obj.dot([0, 0.75 * width, 0.01, 0]) + s_point)
                     points.append(T_grasp_obj.dot([0, -0.75 * width, 0.01, 0]) + s_point)
                     points.append(T_grasp_obj.dot([0, -0.75 * width, -0.01, 0]) + s_point)
 
-
+                    # convert to img coords
                     points_conv = [convert_object_point_to_img(p, obj_pose, camera_pose, pro_matrix) for p in points]
+                    # center point for sorting
                     s_point_conv = convert_object_point_to_img(s_point, obj_pose, camera_pose, pro_matrix)
-
+                    
+                    # sort points
                     points_conv = sort(points_conv, s_point_conv)
                     grasp_points.extend(points_conv)
             
