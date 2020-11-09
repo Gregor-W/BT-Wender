@@ -1,6 +1,5 @@
 #!/bin/bash
-
-
+# get 
 while [ "$1" != "" ]; do
     case $1 in
         -o | --output_dir )           shift
@@ -10,23 +9,28 @@ while [ "$1" != "" ]; do
     shift
 done
 
+if [$output != ""]
+then
+	mkdir $output/
+	mkdir $output/egad-output
 
-mkdir $output/
-mkdir $output/egad-output
+	cd ~/egad/singularity
+	# run egad
+	singularity run -B $output/egad-output:/output --app datasetgen egad.sif
+	# create graspdata
+	singularity run -B $output:/output --app dexnetgendataset egad.sif /output/egad-output/  --limit 120
 
-cd ~/egad/singularity
-singularity run -B $output/egad-output:/output --app datasetgen egad.sif
+	# render depth images
+	OLDDISPLAY=$DISPLAY
+	export DISPLAY=""
+	python3 render/render-depth-all.py $output
+	export DISPLAY=$OLDDISPLAY
 
-singularity run --app dexnetgendataset egad.sif ~/data/egad-output/ --output_dir  ~/data/grasp-data
-
-
-OLDDISPLAY=$DISPLAY
-export DISPLAY=""
-python3 Render/render-depth-all.py $output/grasp-data
-export DISPLAY=$OLDDISPLAY
-
-cd ~/ggcnn_development_features/ggcnn
-
-python3 generate_dataset.py $output/datasets
-
-python3 train_ggcnn.py $output/networks
+	cd ~/ggcnn_development_features/ggcnn
+	# generate ggcnn datasets
+	python3 generate_dataset.py $output
+	# run ggcnn training
+	python3 train_ggcnn.py $output
+else
+	echo no output folder specified
+fi

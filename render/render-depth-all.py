@@ -69,10 +69,14 @@ def check_counterclockwise(points, center):
 if __name__ == "__main__":
     # commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('work_dir', type=str, nargs=1, help="Output directory for converted meshes and pickle files")
+    parser.add_argument('work_dir', type=str, nargs=1, help="work directory with grasp-data folder and egad-output")
+    
     
     args = parser.parse_args()
     base_path = args.work_dir[0]
+    
+    # get newest grasp data folder
+    base_path = os.path.join(base_path, "grasp-data")
     folder = sorted(os.listdir(base_path))[-1]
     input_path = os.path.join(base_path, folder)
     
@@ -82,9 +86,9 @@ if __name__ == "__main__":
     
     
     files = os.listdir(pickle_path)
-    #files = [f for f in files if os.path.basename(f).startswith("0033")]
     total_images = 0
-
+    
+    # create output folder
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
@@ -181,10 +185,11 @@ if __name__ == "__main__":
                     grasp_points.extend(points_conv)
             
             if render:
+                # render depth
                 sc = list()        
                 cv2.imwrite(output_file + "d.tiff", depth)
                 
-                
+                # render color
                 plt.imshow(color) 
                 if debug:
                     for p in points_conv:
@@ -192,7 +197,8 @@ if __name__ == "__main__":
                 plt.savefig(output_file + "r.png")
                 plt.clf()
                 total_images += 1
-
+                
+                # write positive grasp txt file
                 with open(output_file + "cpos.txt", "w") as f: 
                     for p in grasp_points:
                         f.write("%.3f" % p[0])

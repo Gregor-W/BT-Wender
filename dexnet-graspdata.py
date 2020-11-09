@@ -32,7 +32,6 @@ base_output = "/home/ubuntu/grasp-data"
 
 # input egad folder with meshes
 egad_input = "/home/ubuntu/egad-output"
-specific_mesh_files_dir = ""
 
 # filter mesh files for egad generation
 filter_mesh_files = ''
@@ -176,33 +175,35 @@ def grasp_depth_images(dir_path, mesh_file):
 if __name__ == "__main__":
     # commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('egad_input', type=str, nargs=1, help="Egad output folder containing generated 3D mesh obj files")
-    parser.add_argument('--output_dir', type=str, nargs=1, help="Output directory for converted meshes and pickle files")
+    parser.add_argument('egad_input', type=str, nargs=1, help="general EGAD output folder")
+    parser.add_argument('s', '--specific_egad_dir', help="directory is specific EGAD folder", action='store_true')
+    parser.add_argument("--limit", help="limit amount of used EGAD meshes", type=int, nargs='?')
     
     args = parser.parse_args()
     egad_input = args.egad_input[0]
-    base_output = args.output_dir[0]
+    limit = args.limit
     
-    print(egad_input)
-    
-    # get newest egad
-    if specific_mesh_files_dir is None or specific_mesh_files_dir == "":
+    if !args.s:
+        # get newest egad
         folder = sorted(os.listdir(egad_input))[-1]
         mesh_files_dir = os.path.join(egad_input, folder, "pool")
+        base_output = os.path.dirname(os.path.normpath(egad_input))
     else:
-        mesh_files_dir = specific_mesh_files_dir
-
-    print("using meshes from egad output: %s" % mesh_files_dir)
+        # get base directory for output
+        mesh_files_dir = os.path.join(egad_input, "pool")
+        folder = os.path.dirname(os.path.normpath(egad_input))
+        base_output = os.path.dirname(os.path.dirname(folder))
 
     # get list of all mesh files
     all_files = os.listdir(mesh_files_dir)
     obj_files = [f for f in all_files if f.endswith('.obj')]
 
     #output = os.path.join(base_output, datetime.datetime.now().strftime('%y%m%d_%H%M'))
-    output = os.path.join(base_output, folder)
+    output = os.path.join(base_output, "grasp-data", folder)
     pickle_output = os.path.join(output, "pickle-files")
     mesh_output = os.path.join(output, "object-files")
-
+    
+    print("using meshes from EGAD output %s, writing to: %s" %(mesh_files_dir, output))
 
     # check if resume or new
     if not os.path.exists(output):
@@ -211,15 +212,14 @@ if __name__ == "__main__":
         # make dirs
         if not os.path.exists(pickle_output):
             os.makedirs(pickle_output)
+        else:
+            # check existing filenames for egad object names
+            already_done = [f[0:8] for f in os.listdir(pickle_output)]
+            obj_files = [f for f in obj_files if f[0:8] not in already_done]
 
         if not os.path.exists(mesh_output):
             os.makedirs(mesh_output)
-    else:
-        # check existing filenames for egad object names
-        already_done = [f[0:8] for f in os.listdir(pickle_output)]
-        obj_files = [f for f in obj_files if f[0:8] not in already_done]
-
-
+  
     # Check and apply filter
     if filter_mesh_files is None or filter_mesh_files == "":
         mesh_files = obj_files
@@ -238,4 +238,4 @@ if __name__ == "__main__":
         print("%d out of %d mesh files" % (e + 1, len(mesh_files)))
         grasp_depth_images(mesh_files_dir, m)
     # remove sdf files
-    subprocess.call(["rm" , os.path.join(mesh_output, "*.sdf")], shell=True)
+    #subprocess.call(["rm" , os.path.join(mesh_output, "*.sdf")], shell=True)
