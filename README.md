@@ -37,13 +37,13 @@ singularity run -B $output/egad-output:/output --app datasetgen egad.sif --resum
 Run dexnet grasp and mesh preparation
 ```bash
 cd ~/egad/singularity
-singularity run --app dexnetgendataset egad.sif .../output/egad-output/ --output_dir  .../output/grasp-data
+singularity run --app dexnetgraspdata egad.sif .../output/egad-output/ --output_dir  .../output/grasp-data
 ```
 Run depthimage renderer
 ```bash
 DISPLAY variable has to be unset for OSmesa offscreen rendering
 export DISPLAY=""
-python3 Render/render-depth-save.py .../output/grasp-data
+python3 Render/render-depth-all.py .../output/grasp-data
 ```
 Run ggcnn dataset generation
 ```bash

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#current directory
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 #fix python pip
 sudo python3 -m pip install -U --force-reinstall pip
 
@@ -49,7 +52,8 @@ git clone https://github.com/sylabs/singularity.git && \
     sudo make -C ./builddir install
 
 # EGAD
-cp ~/BT-Wender/singularity.def ~/egad/singularity/
+# copy changed singularity.def
+cp $DIR/../singularity.def ~/egad/singularity/
 cd ~/egad/singularity
 sudo singularity build --tmpdir ~/egad/build-tmp egad.sif singularity.def &> install-log.txt
 

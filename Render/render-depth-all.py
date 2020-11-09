@@ -4,6 +4,7 @@ import pyrender
 import matplotlib.pyplot as plt
 import argparse
 import os
+import sys
 import pickle
 import cv2
 
@@ -118,7 +119,7 @@ if __name__ == "__main__":
             scene = pyrender.Scene()
 
             # load table
-            table_trimesh = trimesh.load('~/table.obj')
+            table_trimesh = trimesh.load(os.path.join(sys.path[0], 'table.obj'))
             table_mesh =  pyrender.Mesh.from_trimesh(table_trimesh)
             scene.add(table_mesh)
 

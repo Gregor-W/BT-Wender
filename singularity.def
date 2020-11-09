@@ -235,6 +235,6 @@ From: ubuntu:18.04
     cd /home/co/egad/scripts
     xvfb-run python3 generate_dataset.py ${@}
 
-%apprun dexnetgendataset
+%apprun dexnetgraspdata
 	cd ~/BT-Wender
-	python2 dexnet-create-image.py $@
+	python2 dexnet-graspdata.py $@
