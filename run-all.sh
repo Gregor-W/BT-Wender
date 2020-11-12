@@ -41,6 +41,7 @@ done
 if [ "$RESUME" == true ] || [ "$SKIP" == true ];
 then
 	if [-a $OUTPUT];
+	then
 		WORKDIR=$OUTPUT
 	else
 		echo Resume directory does not exist
@@ -53,12 +54,14 @@ else
 	mkdir -p $OUTPUT
 	mkdir $WORKDIR
 	mkdir $WORKDIR/egad-output
+	echo Creating new output folder: $WORKDIR
 fi
 
 SINGULARITYPATH=~/egad/singularity
 
 # run EGAD
 if [ ! "$SKIP" == true ];
+then
 	if [ "$DOWNLOAD" == true ];
 	then
 		pushd $WORKDIR/egad-output
