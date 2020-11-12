@@ -150,7 +150,7 @@ def grasp_depth_images(dir_path, mesh_file):
                                        "quality": quality})
                                        
             # add to total mesh+stableposes list        
-            grasps_trans.append({"mesh": mesh_file.replace(".uf", "").replace(".obj", ".uf_proc.obj"),
+            grasps_trans.append({"mesh": mesh_file.replace(".obj", "_proc.obj"),
                                  "table_pose": T_table_obj.matrix,
                                  "grasps": grasp_data
                                 })
@@ -158,7 +158,8 @@ def grasp_depth_images(dir_path, mesh_file):
     
     # write pickle file
     print("found %d grasps, writing to file" % len(grasps_trans))
-    with open(os.path.join(pickle_output, mesh_file.replace(".uf", "").replace(".obj", "") + '_aligned_grasps_list.pkl'), 'wb') as out:
+    meshname = mesh_file.replace(".uf", "").replace("_proc", "").replace(".obj", "")
+    with open(os.path.join(pickle_output, meshname + '_aligned_grasps_list.pkl'), 'wb') as out:
             pickle.dump(grasps_trans, out)
 
 

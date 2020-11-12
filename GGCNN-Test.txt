@@ -119,6 +119,8 @@ sudo apt-get -y --purge remove libboost-all-dev libboost-doc libboost-dev
 # view 3D obj
 ctmviewer /home/ubuntu/egad/obj-files/test.uf.obj
 
+git reset --hard origin/master
+
 # fix for pyrender
 https://github.com/duckietown/gym-duckietown#NoSuchDisplayException-Cannot-connect-to-None
 Xvfb :1 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset &> xvfb.log &
