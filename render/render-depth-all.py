@@ -98,7 +98,11 @@ if __name__ == "__main__":
         for n, sp in enumerate(grasp_data):
             mesh = os.path.join(mesh_path, sp['mesh'])
             
-            output_img = "pcd" + sp['mesh'].replace(".uf_proc.obj", "_") + format(n, '04d')        
+            # create name for output file, everything after "pcd" has to be a number or underscore for GGCNN
+            if sp['mesh'][0].isnumeric():
+                output_img = "pcd" + sp['mesh'].replace(".uf_proc.obj", "_").replace("_proc.obj", "_") + format(n, '04d')
+            else:
+                output_img = "pcd" + sp['mesh'][1:].replace("_proc.obj", "_") + format(n, '04d')
             output_file = os.path.join(output_path, output_img)        
 
             obj_pose = sp['table_pose']

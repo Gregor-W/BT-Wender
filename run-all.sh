@@ -1,4 +1,5 @@
 #!/bin/bash
+LIMIT=120
 if [ ! -z "$1" ];
 then
 	OUTPUT=$1
@@ -8,8 +9,7 @@ else
 fi
 shift
 
-LIMIT=120
-
+# read command arguments
 while (( "$#" )); do
   case "$1" in
     -r|--resume)
@@ -37,10 +37,11 @@ while (( "$#" )); do
       shift
   esac
 done
-	
+
+# setup folders
 if [ "$RESUME" == true ] || [ "$SKIP" == true ];
 then
-	if [-a $OUTPUT];
+	if [ -d $OUTPUT ];
 	then
 		WORKDIR=$OUTPUT
 	else
