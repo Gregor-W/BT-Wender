@@ -21,6 +21,10 @@ while (( "$#" )); do
       shift
 	  shift
       ;;
+	-s|--skip)
+	  SKIP=true
+      shift
+      ;;
     -*|--*=) # unsupported flags
       echo "Error: Unsupported flag $1" >&2
       exit 1
@@ -30,7 +34,7 @@ while (( "$#" )); do
   esac
 done
 	
-if [ "$RESUME" == true ];
+if [ "$RESUME" == true ] || [ "$SKIP" == true ];
 then
 	WORKDIR = $OUTPUT
 else
@@ -44,11 +48,14 @@ fi
 
 cd ~/egad/singularity
 # run EGAD
-if [ "$RESUME" == true ];
+if [ ! "$SKIP" == true ]
 then
-	singularity run -B $WORKDIR/egad-output:/output --app datasetgen egad.sif --resume
-else
-	singularity run -B $WORKDIR/egad-output:/output --app datasetgen egad.sif
+	if [ "$RESUME" == true ];
+	then
+		singularity run -B $WORKDIR/egad-output:/output --app datasetgen egad.sif --resume
+	else
+		singularity run -B $WORKDIR/egad-output:/output --app datasetgen egad.sif
+	fi
 fi
 # create graspdata
 singularity run -B $WORKDIR:/output --app dexnetgendataset egad.sif /output --LIMIT $LIMIT
