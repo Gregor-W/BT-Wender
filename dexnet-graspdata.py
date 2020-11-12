@@ -29,6 +29,7 @@ import argparse
 # config file base paths
 dexnet_path = "/home/co/dexnet/"
 egad_path = "/home/co/egad/"
+filter_mesh_files = ""
 
 # Use local config file
 egad_config = YamlConfig(os.path.join(egad_path, "scripts/cfg/dexnet_api_settings.yaml"))
@@ -174,7 +175,13 @@ if __name__ == "__main__":
     base_dir = args.directory[0]
     egad_input = os.path.join(base_dir, "egad-output")
     folder = sorted(os.listdir(egad_input))[-1]
-    mesh_files_dir = os.path.join(egad_input, folder, "pool")
+    
+    # find mesh folder
+    if os.path.exists(os.path.join(egad_input, folder, "pool")):
+        mesh_files_dir = os.path.join(egad_input, folder, "pool")
+    else:
+        # for downloaded dataset
+        mesh_files_dir = os.path.join(egad_input, folder)
 
     # get list of all mesh files
     all_files = os.listdir(mesh_files_dir)
