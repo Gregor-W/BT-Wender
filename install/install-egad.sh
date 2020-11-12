@@ -55,6 +55,7 @@ git clone https://github.com/sylabs/singularity.git && \
 # copy changed singularity.def
 cp $DIR/../singularity.def ~/egad/singularity/
 cd ~/egad/singularity
+mkdir ~/egad/build-tmp
 sudo singularity build --tmpdir ~/egad/build-tmp egad.sif singularity.def &> install-log.txt
 
 

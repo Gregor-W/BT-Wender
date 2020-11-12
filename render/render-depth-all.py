@@ -11,6 +11,7 @@ import cv2
 img_w = 640
 img_h = 480
 dist = 0.15
+rectwidth = 0.01
 min_quality = 70
 debug = True
 
@@ -31,58 +32,46 @@ def convert_object_point_to_img(s_point, obj_pose, camera_pose, proj_matrix):
 
 
 # sort points couterclockwise (points are never random, either clockwise or couterclockwise)
-def sort(points, center):
-    if check_counterclockwise(points, center):
-        return points
+def sort(ps, center):
+    sorted_ps = [("A", ps[0], angle(ps[0], center)),
+                 ("A", ps[1], angle(ps[1], center)),
+                 ("B", ps[2], angle(ps[2], center)),
+                 ("B", ps[3], angle(ps[3], center))]
     
-    points.reverse()
-    if check_counterclockwise(points, center):
-        return points
+    sorted_ps = sorted(sorted_ps, key=lambda a: a[2]) 
+    
+    if sorted_ps[0][0] == sorted_ps[1][0]:
+        return [p[1] for p in sorted_ps]
     else:
-        print("ERROR")
+        sorted_ps = [sorted_ps[-1]] + sorted_ps[:-1]
+    
+    if sorted_ps[0][0] == sorted_ps[1][0]:
+        return [p[1] for p in sorted_ps]
+    else:
+        print("ERROR points couldn't be sorted")
+        return None
+        
+# get angle to x axis with C as center
+def angle(P, C):
+    x = P[0] - C[0]
+    y = P[1] - C[1]
+    return np.rad2deg(np.arctan2(y, x))
 
 
-
-# check if points are couterclockwise
-def check_counterclockwise(points, center):
-    for n, p in enumerate(points):
-        if n + 1 == len(points):
-            n = -1
-        # top right
-        ccw = True
-        if p[0] >= center[0] and p[1] < center[1]:
-            ccw = ccw and points[n + 1][0] < p[0]
-        # top left
-        if p[0] < center[0] and p[1] <= center[1]:
-            ccw = ccw and points[n + 1][1] > p[1]
-        # bottom right
-        if p[0] <= center[0] and p[1] > center[1]:
-            ccw = ccw and points[n + 1][0] > p[0]
-        # bottom left
-        if p[0] > center[0] and p[1] >= center[1]:
-            ccw = ccw and points[n + 1][1] < p[1]
-    return ccw
-
-       
-
-
+      
 if __name__ == "__main__":
     # commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('work_dir', type=str, nargs=1, help="work directory with grasp-data folder and egad-output")
-    
+    parser.add_argument('directory', type=str, nargs=1, help="path to base directory with grasp-data folder and egad-output")
     
     args = parser.parse_args()
-    base_path = args.work_dir[0]
     
-    # get newest grasp data folder
-    base_path = os.path.join(base_path, "grasp-data")
-    folder = sorted(os.listdir(base_path))[-1]
-    input_path = os.path.join(base_path, folder)
+    # get grasp data folder
+    base_path = os.path.join(args.directory[0], "grasp-data")
     
-    pickle_path = os.path.join(input_path, "pickle-files")
-    mesh_path = os.path.join(input_path, "object-files")
-    output_path = os.path.join(input_path, "images")
+    pickle_path = os.path.join(base_path, "pickle-files")
+    mesh_path = os.path.join(base_path, "object-files")
+    output_path = os.path.join(base_path, "images")
     
     
     files = os.listdir(pickle_path)
@@ -116,7 +105,8 @@ if __name__ == "__main__":
             obj_pose = np.linalg.inv(obj_pose)        
             
             grasps = sp['grasps']
-
+            
+            
             # load mesh
             fuze_trimesh = trimesh.load(mesh)
             mesh = pyrender.Mesh.from_trimesh(fuze_trimesh)
@@ -138,7 +128,12 @@ if __name__ == "__main__":
                 [0, 0, 1, dist],
                 [0, 0, 0, 1]
             ])
-            
+            light_pose = np.array([
+                [1, 0, 0, 0.1],
+                [0, 1, 0, 0.1],
+                [0, 0, 1, 0.1],
+                [0, 0, 0, 1]
+            ])
 
             # render scene
             nc = pyrender.Node(camera=camera, matrix=camera_pose)
@@ -146,23 +141,25 @@ if __name__ == "__main__":
             light = pyrender.SpotLight(color=np.ones(3), intensity=1.0,
                                        innerConeAngle=np.pi/16.0,
                                        outerConeAngle=np.pi/6.0)
-            scene.add(light, pose=camera_pose)
+            scene.add(light, pose=light_pose)
             r = pyrender.OffscreenRenderer(img_w, img_h)
             color, depth = r.render(scene)
 
             # draw grasp points
             pro_matrix = camera.get_projection_matrix(img_w, img_h)
+            
+            
             render = False
             grasp_points = list()
             for grasp in grasps:
                 if grasp["quality"] >= min_quality:
                     # only render if good grasps are found
                     render = True
+                    
+                    
                     T_grasp_obj = grasp["grasp_T"]
                     # grasps
                     s_point = np.array([row[3] for row in T_grasp_obj])
-
-
 
                     contact_p0 = np.array(grasp["contact0"])
                     contact_p1 = np.array(grasp["contact1"])
@@ -170,10 +167,10 @@ if __name__ == "__main__":
 
                     points = list()
                     # create grasping rectangle
-                    points.append(T_grasp_obj.dot([0, 0.75 * width, -0.01, 0]) + s_point)
-                    points.append(T_grasp_obj.dot([0, 0.75 * width, 0.01, 0]) + s_point)
-                    points.append(T_grasp_obj.dot([0, -0.75 * width, 0.01, 0]) + s_point)
-                    points.append(T_grasp_obj.dot([0, -0.75 * width, -0.01, 0]) + s_point)
+                    points.append(T_grasp_obj.dot([0, 0.75 * width, -rectwidth, 0]) + s_point)
+                    points.append(T_grasp_obj.dot([0, 0.75 * width, rectwidth, 0]) + s_point)
+                    points.append(T_grasp_obj.dot([0, -0.75 * width, rectwidth, 0]) + s_point)
+                    points.append(T_grasp_obj.dot([0, -0.75 * width, -rectwidth, 0]) + s_point)
 
                     # convert to img coords
                     points_conv = [convert_object_point_to_img(p, obj_pose, camera_pose, pro_matrix) for p in points]
@@ -182,6 +179,7 @@ if __name__ == "__main__":
                     
                     # sort points
                     points_conv = sort(points_conv, s_point_conv)
+                   
                     grasp_points.extend(points_conv)
             
             if render:

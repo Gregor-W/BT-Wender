@@ -5,8 +5,7 @@ cd ~
 git clone https://github.com/Gregor-W/ggcnn_development_features.git
 pip install keras
 pip install tensorflow
-
-pip install --upgrade --force-reinstall tensorflow-gpu==1.9.0
+#pip install --upgrade --force-reinstall tensorflow-gpu==1.9.0
 
 
 #https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html

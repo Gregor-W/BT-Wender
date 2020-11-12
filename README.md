@@ -37,11 +37,11 @@ singularity run -B .../output/egad-output:/output --app datasetgen egad.sif --re
 Run dexnet grasp and mesh preparation
 ```bash
 cd ~/egad/singularity
-singularity run --app dexnetgraspdata egad.sif .../output/egad-output/ --limit 120
+singularity run --app dexnetgraspdata egad.sif .../output --limit 120
 ```
 If the singularity container is unable to access the output directory use this command instead:
 ```bash
-singularity run -B .../output:/output --app dexnetgraspdata egad.sif /output/egad-output/ --limit 120
+singularity run -B .../output:/output --app dexnetgraspdata egad.sif /output --limit 120
 ```
 Run depthimage renderer
 ```bash

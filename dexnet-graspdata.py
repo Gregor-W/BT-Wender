@@ -26,23 +26,12 @@ import pickle
 import pathlib
 import datetime
 import argparse
-
-# output directories
-base_output = "/home/ubuntu/grasp-data"
-
-# input egad folder with meshes
-egad_input = "/home/ubuntu/egad-output"
-
-# filter mesh files for egad generation
-filter_mesh_files = ''
-limit = 120
-
+# config file base paths
 dexnet_path = "/home/co/dexnet/"
-egad_path = "/home/ubuntu/egad/"
+egad_path = "/home/co/egad/"
 
 # Use local config file
-egad_path = YamlConfig(os.path.join(egad_path, "scripts/cfg/dexnet_api_settings.yaml"))
-grasp_config = YamlConfig(os.path.join(dexnet_path, "test/config.yaml")) # DEXNET test config
+egad_config = YamlConfig(os.path.join(egad_path, "scripts/cfg/dexnet_api_settings.yaml"))
 coll_vis_config = YamlConfig(os.path.join(dexnet_path, "cfg/tools/generate_gqcnn_dataset.yaml"))
 
 # min stable pose probability
@@ -93,19 +82,19 @@ def grasp_depth_images(dir_path, mesh_file):
     #mesh_output = tempfile.mkdtemp()-
     # prepare mesh and +generate Grasps
     mesh_processor = mp.MeshProcessor(os.path.join(dir_path, mesh_file), mesh_output)
-    mesh_processor.generate_graspable(grasp_config)
+    mesh_processor.generate_graspable(egad_config)
     
-    gripper = RobotGripper.load('yumi_metal_spline', gripper_dir=grasp_config['gripper_dir'])
-    sampler = AntipodalGraspSampler(gripper, grasp_config)
+    gripper = RobotGripper.load('yumi_metal_spline', gripper_dir=egad_config['gripper_dir'])
+    sampler = AntipodalGraspSampler(gripper, egad_config)
     obj = GraspableObject3D(mesh_processor.sdf, mesh_processor.mesh)
-    grasps = sampler.generate_grasps(obj, max_iter=grasp_config['max_grasp_sampling_iters'])
+    grasps = sampler.generate_grasps(obj, max_iter=egad_config['max_grasp_sampling_iters'])
     
     # setup collision checker
     collision_checker = GraspCollisionChecker(gripper)
     collision_checker.set_graspable_object(obj)
     
     # setup Grasp Quality Function
-    metric_config = GraspQualityConfigFactory().create_config(egad_path['metrics']['ferrari_canny'])
+    metric_config = GraspQualityConfigFactory().create_config(egad_config['metrics']['ferrari_canny'])
     quality_fn = GraspQualityFunctionFactory.create_quality_function(obj, metric_config)
     # https://github.com/BerkeleyAutomation/dex-net/blob/0f63f706668815e96bdeea16e14d2f2b266f9262/src/dexnet/grasping/quality.py
     
@@ -175,31 +164,24 @@ def grasp_depth_images(dir_path, mesh_file):
 if __name__ == "__main__":
     # commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('egad_input', type=str, nargs=1, help="general EGAD output folder")
-    parser.add_argument('s', '--specific_egad_dir', help="directory is specific EGAD folder", action='store_true')
+    parser.add_argument('directory', type=str, nargs=1, help="Base folder, including EGAD output folder")
     parser.add_argument("--limit", help="limit amount of used EGAD meshes", type=int, nargs='?')
     
     args = parser.parse_args()
-    egad_input = args.egad_input[0]
     limit = args.limit
     
-    if !args.s:
-        # get newest egad
-        folder = sorted(os.listdir(egad_input))[-1]
-        mesh_files_dir = os.path.join(egad_input, folder, "pool")
-        base_output = os.path.dirname(os.path.normpath(egad_input))
-    else:
-        # get base directory for output
-        mesh_files_dir = os.path.join(egad_input, "pool")
-        folder = os.path.dirname(os.path.normpath(egad_input))
-        base_output = os.path.dirname(os.path.dirname(folder))
+    # get egad
+    base_dir = args.directory[0]
+    egad_input = os.path.join(base_dir, "egad-output")
+    folder = sorted(os.listdir(egad_input))[-1]
+    mesh_files_dir = os.path.join(egad_input, folder, "pool")
 
     # get list of all mesh files
     all_files = os.listdir(mesh_files_dir)
     obj_files = [f for f in all_files if f.endswith('.obj')]
 
     #output = os.path.join(base_output, datetime.datetime.now().strftime('%y%m%d_%H%M'))
-    output = os.path.join(base_output, "grasp-data", folder)
+    output = os.path.join(base_dir, "grasp-data")
     pickle_output = os.path.join(output, "pickle-files")
     mesh_output = os.path.join(output, "object-files")
     
@@ -212,10 +194,6 @@ if __name__ == "__main__":
         # make dirs
         if not os.path.exists(pickle_output):
             os.makedirs(pickle_output)
-        else:
-            # check existing filenames for egad object names
-            already_done = [f[0:8] for f in os.listdir(pickle_output)]
-            obj_files = [f for f in obj_files if f[0:8] not in already_done]
 
         if not os.path.exists(mesh_output):
             os.makedirs(mesh_output)
@@ -229,9 +207,12 @@ if __name__ == "__main__":
     # Limit mesh files
     if limit is not None and limit < len(mesh_files):
         mesh_files = sorted(mesh_files)[0:limit]
-
-    print("%d mesh files found" % len(mesh_files))
-
+    
+    print("total %d mesh files found" % len(mesh_files))
+    
+    # check existing filenames for egad object names
+    already_done = [f[0:8] for f in os.listdir(pickle_output)]
+    mesh_files = [f for f in mesh_files if f[0:8] not in already_done]
 
     # start grasp creation
     for e, m in enumerate(mesh_files):
