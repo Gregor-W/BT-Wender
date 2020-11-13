@@ -46,12 +46,13 @@ def angle(P, C):
 class GraspRender:
     def __init__(self, mesh_path, output_path, img_w=IMG_W, img_h=IMG_H, cam_dist=DIST,
                  grasp_width=GRASP_WIDTH, min_grasp_quality=MIN_QUALITY):
-       # create single figure here to be reused later to avoid GC issues
+        # create single figure here to be reused later to avoid GC issues
         fig = plt.figure()
         ax = plt.Axes(fig, [0., 0., 1., 1.])
         ax.set_axis_off()
         fig.add_axes(ax)
         
+        # set instance variables
         self.mesh_path = mesh_path
         self.output_path = output_path
         self.img_w = img_w
@@ -60,6 +61,8 @@ class GraspRender:
         self.rectwidth = grasp_width
         self.min_quality = min_grasp_quality
         
+        # create unset instance variables
+        self.number = 0
         self.proj_matrix = None
         self.camera_pose = None
         self.obj_pose = None
@@ -82,7 +85,9 @@ class GraspRender:
         y = (-twoD_point[1] / twoD_point[3] + 1) * 0.5 * self.img_h
 
         return x, y
-
+    
+    
+    # create pyrender scene with current mesh
     def create_scene(self):
         self.scene = pyrender.Scene()
 
@@ -122,6 +127,8 @@ class GraspRender:
         mesh_file = pyrender.Mesh.from_trimesh(fuze_trimesh)
         self.scene.add(mesh_file, pose=self.obj_pose)
     
+    
+    # get 2D points
     def get_points(self, T_grasp_obj, contact_p0, contact_p1):
         # grasps
         s_point = np.array([row[3] for row in T_grasp_obj])
@@ -145,9 +152,9 @@ class GraspRender:
        
         return points_conv
         
-    
+    # render images
     def render_write(self, show_points=False):
-        output_file = get_output_filename()
+        output_file = self.get_output_filename()
     
         r = pyrender.OffscreenRenderer(self.img_w, self.img_h)
         color, depth = r.render(self.scene)
@@ -160,8 +167,10 @@ class GraspRender:
         
         # write color
         plt.imshow(color) 
+        
+        # add grasp points
         if show_points:
-            for p in points_conv:
+            for p in self.grasp_points[0:4]:
                sc.append(plt.scatter(p[0], p[1]))           
         plt.savefig(output_file + "r.png")
         plt.clf()
@@ -175,15 +184,21 @@ class GraspRender:
                 f.write("\n")
     
     
-    def get_output_filename():
+    # get filename for output
+    def get_output_filename(self):
+        self.number += 1
         # create name for output file, everything after "pcd" has to be a number or underscore for GGCNN
         if self.mesh[0].isnumeric():
-            output_img = "pcd" + self.mesh.replace(".uf_proc.obj", "_") + format(n, '04d')
+            output_img = "pcd" + self.mesh.replace(".uf_proc.obj", "_")
         else:
-            output_img = "pcd" + self.mesh[1:].replace("_proc.obj", "_") + format(n, '04d')
+            output_img = "pcd" + self.mesh[1:].replace("_proc.obj", "_")
+        # add unique number for stable pose and mesh
+        output_img += format(self.number, '04d')
         return os.path.join(self.output_path, output_img)     
     
-    def run(stable_pose_grasps, show_points=False):
+    
+    # write grasp points and render
+    def run(self, stable_pose_grasps, show_points=False):
         self.obj_pose = np.linalg.inv(stable_pose_grasps['table_pose'])
         self.mesh = stable_pose_grasps['mesh']
         
@@ -204,6 +219,7 @@ class GraspRender:
             return True
         else:
             return False
+
             
 # python main
 def run():
@@ -221,13 +237,13 @@ def run():
     output_path = os.path.join(base_path, "images")
     
     files = os.listdir(pickle_path)
-    total_images = 0
+    total_images = 1
     
     # create output folder
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    grasp_renderer = GraspRender(mesh_path)
+    grasp_renderer = GraspRender(mesh_path, output_path)
 
     print("total pickle files: %d" % len(files))
     for e, file in enumerate(files):
