@@ -123,7 +123,6 @@ class DexnetGraspdata:
                     collision_free = True
                     break
 
-            # visualize
             if (collision_free and aligned_grasp.close_fingers(obj)[0]):
                 quality = convert_quality(quality_fn(aligned_grasp).quality)
                 grasp_data.append({"grasp_T": aligned_grasp.T_grasp_obj.matrix,
@@ -149,7 +148,7 @@ class DexnetGraspdata:
                 pickle.dump(grasps_list, out)
     
     # Generate Stable Poses, Grasps and write to pickle 
-    def run(self, dir_path, mesh_file):
+    def generate_write(self, dir_path, mesh_file):
         # prepare mesh and +generate Grasps
         mesh_processor = mp.MeshProcessor(os.path.join(dir_path, mesh_file), self.mesh_out)
         mesh_processor.generate_graspable(self.egad_config)
@@ -179,7 +178,7 @@ class DexnetGraspdata:
         print("found %d grasps, writing to file" % len(grasps_trans))
         self.save_grasps(grasps_trans, mesh_file)
 
-
+# python main
 def run():
     # commandline arguments
     parser = argparse.ArgumentParser()
@@ -244,7 +243,7 @@ def run():
     
     for e, m in enumerate(mesh_files):
         print("%d out of %d mesh files" % (e + 1, len(mesh_files)))
-        Grasp_generator.run(mesh_files_dir, m)
+        Grasp_generator.generate_write(mesh_files_dir, m)
 
 if __name__ == "__main__":
     run()

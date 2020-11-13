@@ -8,30 +8,14 @@ import sys
 import pickle
 import cv2
 
-img_w = 640
-img_h = 480
-dist = 0.15
-rectwidth = 0.01
-min_quality = 70
-debug = True
+IMG_W = 640
+IMG_H = 480
+DIST = 0.15
+GRASP_WIDTH = 0.01
+MIN_QUALITY = 70
+DEBUG = True
 
-
-# convert point in obj coords to point on image
-def convert_object_point_to_img(s_point, obj_pose, camera_pose, proj_matrix):
-    # point to world coords
-    point = obj_pose.dot(s_point)
-    # point to camera coords
-    cam_point = np.linalg.inv(camera_pose).dot(point)
-    # point to projection matrix
-    twoD_point = proj_matrix.dot(cam_point)
-
-    x = (twoD_point[0] / twoD_point[3] + 1) * 0.5 * img_w
-    y = (-twoD_point[1] / twoD_point[3] + 1) * 0.5 * img_h
-    
-    return x, y
-
-
-# sort points couterclockwise (points are never random, either clockwise or couterclockwise)
+# sort points couterclockwise
 def sort(ps, center):
     sorted_ps = [("A", ps[0], angle(ps[0], center)),
                  ("A", ps[1], angle(ps[1], center)),
@@ -40,6 +24,7 @@ def sort(ps, center):
     
     sorted_ps = sorted(sorted_ps, key=lambda a: a[2]) 
     
+    # make sure first two points are the same gripper finger
     if sorted_ps[0][0] == sorted_ps[1][0]:
         return [p[1] for p in sorted_ps]
     else:
@@ -58,8 +43,170 @@ def angle(P, C):
     return np.rad2deg(np.arctan2(y, x))
 
 
-      
-if __name__ == "__main__":
+class GraspRender:
+    def __init__(self, mesh_path, output_path, img_w=IMG_W, img_h=IMG_H, cam_dist=DIST,
+                 grasp_width=GRASP_WIDTH, min_grasp_quality=MIN_QUALITY):
+       # create single figure here to be reused later to avoid GC issues
+        fig = plt.figure()
+        ax = plt.Axes(fig, [0., 0., 1., 1.])
+        ax.set_axis_off()
+        fig.add_axes(ax)
+        
+        self.mesh_path = mesh_path
+        self.output_path = output_path
+        self.img_w = img_w
+        self.img_h = img_h
+        self.dist = cam_dist
+        self.rectwidth = grasp_width
+        self.min_quality = min_grasp_quality
+        
+        self.proj_matrix = None
+        self.camera_pose = None
+        self.obj_pose = None
+        self.scene = None
+        self.mesh = None
+        self.grasp_points = list()
+        self.table_mesh_path = os.path.join(sys.path[0], 'table.obj')
+        
+        
+    # convert point in obj coords to point on image
+    def convert_object_point_to_img(self, s_point):
+        # point to world coords
+        point = self.obj_pose.dot(s_point)
+        # point to camera coords
+        cam_point = np.linalg.inv(self.camera_pose).dot(point)
+        # point to projection matrix
+        twoD_point = self.proj_matrix.dot(cam_point)
+
+        x = (twoD_point[0] / twoD_point[3] + 1) * 0.5 * self.img_w
+        y = (-twoD_point[1] / twoD_point[3] + 1) * 0.5 * self.img_h
+
+        return x, y
+
+    def create_scene(self):
+        self.scene = pyrender.Scene()
+
+        # load table
+        table_trimesh = trimesh.load(self.table_mesh_path)
+        table_mesh =  pyrender.Mesh.from_trimesh(table_trimesh)
+        self.scene.add(table_mesh)
+        
+        # setup camera
+        camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0)
+        self.camera_pose = np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, self.dist],
+            [0, 0, 0, 1]
+        ])
+        nc = pyrender.Node(camera=camera, matrix=self.camera_pose)
+        self.scene.add_node(nc)
+        # get camera projection matrix
+        self.proj_matrix = camera.get_projection_matrix(self.img_w, self.img_h)
+        
+        # add light
+        light = pyrender.SpotLight(color=np.ones(3), intensity=1.0,
+                                   innerConeAngle=np.pi/16.0,
+                                   outerConeAngle=np.pi/6.0)
+        light_pose = np.array([
+            [1, 0, 0, 0.1],
+            [0, 1, 0, 0.1],
+            [0, 0, 1, 0.1],
+            [0, 0, 0, 1]
+        ])
+        self.scene.add(light, pose=light_pose)
+        
+        # load mesh
+        mesh_file = os.path.join(self.mesh_path, self.mesh)
+        fuze_trimesh = trimesh.load(mesh_file)
+        mesh_file = pyrender.Mesh.from_trimesh(fuze_trimesh)
+        self.scene.add(mesh_file, pose=self.obj_pose)
+    
+    def get_points(self, T_grasp_obj, contact_p0, contact_p1):
+        # grasps
+        s_point = np.array([row[3] for row in T_grasp_obj])
+
+        width = np.linalg.norm(np.array(contact_p0) - np.array(contact_p1))
+
+        points = list()
+        # create grasping rectangle
+        points.append(T_grasp_obj.dot([0, 0.75 * width, -self.rectwidth, 0]) + s_point)
+        points.append(T_grasp_obj.dot([0, 0.75 * width, self.rectwidth, 0]) + s_point)
+        points.append(T_grasp_obj.dot([0, -0.75 * width, self.rectwidth, 0]) + s_point)
+        points.append(T_grasp_obj.dot([0, -0.75 * width, -self.rectwidth, 0]) + s_point)
+
+        # convert to img coords
+        points_conv = [self.convert_object_point_to_img(p) for p in points]
+        # center point for sorting
+        s_point_conv = self.convert_object_point_to_img(s_point)
+        
+        # sort points
+        points_conv = sort(points_conv, s_point_conv)
+       
+        return points_conv
+        
+    
+    def render_write(self, show_points=False):
+        output_file = get_output_filename()
+    
+        r = pyrender.OffscreenRenderer(self.img_w, self.img_h)
+        color, depth = r.render(self.scene)
+        # render scene
+        color, depth = r.render(self.scene)
+        
+        # write depth
+        sc = list()        
+        cv2.imwrite(output_file + "d.tiff", depth)
+        
+        # write color
+        plt.imshow(color) 
+        if show_points:
+            for p in points_conv:
+               sc.append(plt.scatter(p[0], p[1]))           
+        plt.savefig(output_file + "r.png")
+        plt.clf()
+        
+        # write positive grasp txt file
+        with open(output_file + "cpos.txt", "w") as f: 
+            for p in self.grasp_points:
+                f.write("%.3f" % p[0])
+                f.write(" ")
+                f.write("%.3f" % p[1])
+                f.write("\n")
+    
+    
+    def get_output_filename():
+        # create name for output file, everything after "pcd" has to be a number or underscore for GGCNN
+        if self.mesh[0].isnumeric():
+            output_img = "pcd" + self.mesh.replace(".uf_proc.obj", "_") + format(n, '04d')
+        else:
+            output_img = "pcd" + self.mesh[1:].replace("_proc.obj", "_") + format(n, '04d')
+        return os.path.join(self.output_path, output_img)     
+    
+    def run(stable_pose_grasps, show_points=False):
+        self.obj_pose = np.linalg.inv(stable_pose_grasps['table_pose'])
+        self.mesh = stable_pose_grasps['mesh']
+        
+        self.create_scene()
+            
+        # get grasp points
+        grasps = stable_pose_grasps['grasps']
+        render = False
+        self.grasp_points = list()
+        for grasp in grasps:
+            if grasp["quality"] >= self.min_quality:
+                # only render if good grasps are found
+                render = True
+                self.grasp_points.extend(self.get_points(grasp["grasp_T"], grasp["contact0"], grasp["contact1"]))
+        
+        if render:
+            self.render_write(show_points)
+            return True
+        else:
+            return False
+            
+# python main
+def run():
     # commandline arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('directory', type=str, nargs=1, help="path to base directory with grasp-data folder and egad-output")
@@ -73,7 +220,6 @@ if __name__ == "__main__":
     mesh_path = os.path.join(base_path, "object-files")
     output_path = os.path.join(base_path, "images")
     
-    
     files = os.listdir(pickle_path)
     total_images = 0
     
@@ -81,11 +227,7 @@ if __name__ == "__main__":
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    # create single figure here to be reused later to avoid GC issues
-    fig = plt.figure()
-    ax = plt.Axes(fig, [0., 0., 1., 1.])
-    ax.set_axis_off()
-    fig.add_axes(ax)
+    grasp_renderer = GraspRender(mesh_path)
 
     print("total pickle files: %d" % len(files))
     for e, file in enumerate(files):
@@ -96,114 +238,8 @@ if __name__ == "__main__":
 
 
         for n, sp in enumerate(grasp_data):
-            mesh = os.path.join(mesh_path, sp['mesh'])
-            
-            # create name for output file, everything after "pcd" has to be a number or underscore for GGCNN
-            if sp['mesh'][0].isnumeric():
-                output_img = "pcd" + sp['mesh'].replace(".uf_proc.obj", "_").replace("_proc.obj", "_") + format(n, '04d')
-            else:
-                output_img = "pcd" + sp['mesh'][1:].replace("_proc.obj", "_") + format(n, '04d')
-            output_file = os.path.join(output_path, output_img)        
-
-            obj_pose = sp['table_pose']
-            obj_pose = np.linalg.inv(obj_pose)        
-            
-            grasps = sp['grasps']
-            
-            
-            # load mesh
-            fuze_trimesh = trimesh.load(mesh)
-            mesh = pyrender.Mesh.from_trimesh(fuze_trimesh)
-            scene = pyrender.Scene()
-
-            # load table
-            table_trimesh = trimesh.load(os.path.join(sys.path[0], 'table.obj'))
-            table_mesh =  pyrender.Mesh.from_trimesh(table_trimesh)
-            scene.add(table_mesh)
-
-            
-
-            scene.add(mesh, pose=obj_pose)
-            camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0)
-
-            camera_pose = np.array([
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, dist],
-                [0, 0, 0, 1]
-            ])
-            light_pose = np.array([
-                [1, 0, 0, 0.1],
-                [0, 1, 0, 0.1],
-                [0, 0, 1, 0.1],
-                [0, 0, 0, 1]
-            ])
-
-            # render scene
-            nc = pyrender.Node(camera=camera, matrix=camera_pose)
-            scene.add_node(nc)
-            light = pyrender.SpotLight(color=np.ones(3), intensity=1.0,
-                                       innerConeAngle=np.pi/16.0,
-                                       outerConeAngle=np.pi/6.0)
-            scene.add(light, pose=light_pose)
-            r = pyrender.OffscreenRenderer(img_w, img_h)
-            color, depth = r.render(scene)
-
-            # draw grasp points
-            pro_matrix = camera.get_projection_matrix(img_w, img_h)
-            
-            
-            render = False
-            grasp_points = list()
-            for grasp in grasps:
-                if grasp["quality"] >= min_quality:
-                    # only render if good grasps are found
-                    render = True
-                    
-                    
-                    T_grasp_obj = grasp["grasp_T"]
-                    # grasps
-                    s_point = np.array([row[3] for row in T_grasp_obj])
-
-                    contact_p0 = np.array(grasp["contact0"])
-                    contact_p1 = np.array(grasp["contact1"])
-                    width = np.linalg.norm(contact_p0 - contact_p1)
-
-                    points = list()
-                    # create grasping rectangle
-                    points.append(T_grasp_obj.dot([0, 0.75 * width, -rectwidth, 0]) + s_point)
-                    points.append(T_grasp_obj.dot([0, 0.75 * width, rectwidth, 0]) + s_point)
-                    points.append(T_grasp_obj.dot([0, -0.75 * width, rectwidth, 0]) + s_point)
-                    points.append(T_grasp_obj.dot([0, -0.75 * width, -rectwidth, 0]) + s_point)
-
-                    # convert to img coords
-                    points_conv = [convert_object_point_to_img(p, obj_pose, camera_pose, pro_matrix) for p in points]
-                    # center point for sorting
-                    s_point_conv = convert_object_point_to_img(s_point, obj_pose, camera_pose, pro_matrix)
-                    
-                    # sort points
-                    points_conv = sort(points_conv, s_point_conv)
-                   
-                    grasp_points.extend(points_conv)
-            
-            if render:
-                # render depth
-                sc = list()        
-                cv2.imwrite(output_file + "d.tiff", depth)
-                
-                # render color
-                plt.imshow(color) 
-                if debug:
-                    for p in points_conv:
-                       sc.append(plt.scatter(p[0], p[1]))           
-                plt.savefig(output_file + "r.png")
-                plt.clf()
+            if grasp_renderer.run(sp, DEBUG):
                 total_images += 1
-                
-                # write positive grasp txt file
-                with open(output_file + "cpos.txt", "w") as f: 
-                    for p in grasp_points:
-                        f.write("%.3f" % p[0])
-                        f.write(" ")
-                        f.write("%.3f" % p[1])
-                        f.write("\n")
+
+if __name__ == "__main__":
+    run()

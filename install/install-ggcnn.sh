@@ -2,7 +2,7 @@
 
 # ggcnn
 cd ~
-git clone https://github.com/Gregor-W/ggcnn_development_features.git
+git clone --branch technical-spike_egad_support https://github.com/MrDio/ggcnn_development_features.git
 pip install keras
 pip install tensorflow
 #pip install --upgrade --force-reinstall tensorflow-gpu==1.9.0
