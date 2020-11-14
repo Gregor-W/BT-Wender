@@ -50,7 +50,29 @@ class DexnetGraspdata:
         self.pickle_out = pickle_out
         self.mesh_out = mesh_out
         
-        ## CONFIG
+        ## SETUP CONFIG
+        self.egad_config = None
+        self.table_offset = None
+        self.table_mesh_filename = None
+        self.approach_dist = None
+        self.delta_approach = None 
+        self.max_grasp_approach_table_angle = None
+        self.phi_offsets = None
+        
+        self.setup_config(egad_path, dexnet_path)
+        
+        ## DEXNET SETUP
+        # setup collision checker and sampler
+        os.chdir(str(Path(dexnet.__file__).resolve().parent.parent.parent))
+        self.gripper = RobotGripper.load('yumi_metal_spline', gripper_dir=self.egad_config['gripper_dir'])
+        self.sampler = AntipodalGraspSampler(self.gripper, self.egad_config)
+        # setup Grasp Quality Function
+        self.metric_config = GraspQualityConfigFactory().create_config(self.egad_config['metrics']['ferrari_canny'])
+        # has to be reinitiated  to avoid errors
+        self.collision_checker  = None
+        
+    # setup config
+    def setup_config(self, egad_path, dexnet_path):
         # Use local config file
         self.egad_config = YamlConfig(os.path.join(egad_path, "scripts/cfg/dexnet_api_settings.yaml"))
         
@@ -83,17 +105,6 @@ class DexnetGraspdata:
         while phi <= max_grasp_approach_offset:
             self.phi_offsets.append(phi)
             phi += phi_inc
-        
-        ## DEXNET SETUP
-        # setup collision checker and sampler
-        os.chdir(str(Path(dexnet.__file__).resolve().parent.parent.parent))
-        self.gripper = RobotGripper.load('yumi_metal_spline', gripper_dir=self.egad_config['gripper_dir'])
-        self.sampler = AntipodalGraspSampler(self.gripper, self.egad_config)
-        # setup Grasp Quality Function
-        self.metric_config = GraspQualityConfigFactory().create_config(self.egad_config['metrics']['ferrari_canny'])
-        # has to be reinitiated  to avoid errors
-        self.collision_checker  = None
-        
     
     # get list of grasps for given stable_pose and obj
     def get_grasps(self, stable_pose, obj):
