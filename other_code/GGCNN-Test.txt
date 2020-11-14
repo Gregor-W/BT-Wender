@@ -101,7 +101,7 @@ scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.219.138.115:/home/u
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/BT-Wender/singularity.def ubuntu@18.219.138.115:/home/ubuntu/egad/singularity/
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem G/Hochschule/Festo/Git/ggcnn_development_features/ggcnn/train_ggcnn.py ubuntu@18.219.138.115:/home/ubuntu/ggcnn_development_features/ggcnn
 
-
+scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.219.138.115:/home/ubuntu/data/egad-ggcnn_20201114_143554/grasp-data/images/pcd01_3_0034r.png G/Hochschule/Festo/grasp-data
 
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem ubuntu@18.191.177.49:/home/ubuntu/egad/output/1589817197/pool/0024_2439.uf.obj G/Hochschule/Festo/grasp-data
 scp -i C/Users/Gregor/Downloads/Wender-keypair.pem -r ubuntu@18.191.177.49:/home/ubuntu/egad/grasp-data/test-object0 G/Hochschule/Festo/grasp-data

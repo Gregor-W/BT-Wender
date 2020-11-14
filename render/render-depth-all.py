@@ -114,9 +114,9 @@ class GraspRender:
                                    innerConeAngle=np.pi/16.0,
                                    outerConeAngle=np.pi/6.0)
         light_pose = np.array([
-            [1, 0, 0, 0.1],
-            [0, 1, 0, 0.1],
-            [0, 0, 1, 0.1],
+            [1, 0, 0, 0.2],
+            [0, 1, 0, 0.2],
+            [0, 0, 1, 1],
             [0, 0, 0, 1]
         ])
         self.scene.add(light, pose=light_pose)
