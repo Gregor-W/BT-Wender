@@ -199,7 +199,7 @@ class GraspRender:
     
     # write grasp points and render
     def run(self, stable_pose_grasps, show_points=False):
-        self.obj_pose = np.linalg.inv(stable_pose_grasps['table_pose'])
+        self.obj_pose = np.linalg.inv(stable_pose_grasps['stable_pose'])
         self.mesh = stable_pose_grasps['mesh']
         
         self.create_scene()

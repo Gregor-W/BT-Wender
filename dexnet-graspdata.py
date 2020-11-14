@@ -181,7 +181,7 @@ class DexnetGraspdata:
                 T_table_obj = self.setup_Table(stable_pose, obj)
                 grasp_data = self.get_grasps(stable_pose, obj)
                 grasps_trans.append({"mesh": mesh_file.replace(".obj", "_proc.obj"),
-                                     "table_pose": T_table_obj.matrix,
+                                     "stable_pose": T_table_obj.matrix,
                                      "grasps": grasp_data
                                     })
         
