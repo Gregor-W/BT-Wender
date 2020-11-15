@@ -42,7 +42,7 @@ def angle(P, C):
     y = P[1] - C[1]
     return np.rad2deg(np.arctan2(y, x))
 
-
+# Class to render depth images loaded from pickle file
 class GraspRender:
     def __init__(self, mesh_path, output_path, img_w=IMG_W, img_h=IMG_H, cam_dist=DIST,
                  grasp_width=GRASP_WIDTH, min_grasp_quality=MIN_QUALITY):
@@ -229,7 +229,7 @@ def run():
     
     args = parser.parse_args()
     
-    # get grasp data folder
+    # get all folders
     base_path = os.path.join(args.directory[0], "grasp-data")
     
     pickle_path = os.path.join(base_path, "pickle-files")
@@ -242,17 +242,21 @@ def run():
     # create output folder
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-
+    
+    # new GraspRender
     grasp_renderer = GraspRender(mesh_path, output_path)
-
+    
+    # run for all pickle files
     print("total pickle files: %d" % len(files))
     for e, file in enumerate(files):
         print("%d of %d" % (e,len(files)))
         print("total images: %d" % total_images)
+        
+        # load pickle
         with open(os.path.join(pickle_path, file), 'rb') as f:
             grasp_data = pickle.load(f, encoding="latin1")
 
-
+        # render all images
         for n, sp in enumerate(grasp_data):
             if grasp_renderer.run(sp, DEBUG):
                 total_images += 1

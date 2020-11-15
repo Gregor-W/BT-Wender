@@ -40,14 +40,75 @@ def convert_quality(q):
     q_percent = (q - scale_min)/(scale_max - scale_min) * 100
     return q_percent
 
-class DexnetGraspdata:
-    def __init__(self, pickle_out, mesh_out, sp_min_p, egad_path, dexnet_path):
+# Helper class for StablePoseData to save grasp data to pickle
+# grasp_T: numpy_array 4x3      Transformation Matrix grasp frame to obj frame
+# contact0/1: numpy_array 3x1   Contact Points for Gripper
+# quality: float                Graspquality
+class GraspData:
+    def __init__(self, grasp_T, contact0, contact1, quality):
+        self.grasp_T = grasp_T
+        self.contact0 = contact0
+        self.contact1 = contact1
+        self.quality = quality
+    
+    # return dictionary to write to pickle
+    def get_dict(self):
+        return {"grasp_T":  self.grasp_T,
+                "contact0": self.contact0,
+                "contact1": self.contact1,
+                "quality":  self.quality}
+                
+                
+# Class to save grasp data to pickle
+# mesh_file: string                 mesh file name
+# T_table_obj: numpy_array 4x3      stable pose, Transformation Matrix table frame to obj frame
+# grasps: list of GraspData         list of grasps for stable pose
+class StablePoseData:
+    @classmethod
+    # save list of StablePoseData as pickle file
+    def save_grasps(cls, spd_list, pickle_out):
+        if len(spd_list):
+            # convert to dict
+            dict_data = []
+            for spd in spd_list:
+                dict_data.append(spd.get_dict())
+            
+            # get meshname
+            meshname = spd_list[0].mesh_file.replace(".uf", "").replace("_proc", "").replace(".obj", "")
+            with open(os.path.join(pickle_out, meshname + '_aligned_grasps_list.pkl'), 'wb') as out:
+                    pickle.dump(dict_data, out)
+        else:
+            print("List of StablePoseData is empty")
+
+    def __init__(self, mesh_file, T_table_obj, grasps):
+        self.mesh_file = mesh_file
+        self.T_table_obj = T_table_obj
+        self.grasps = grasps
+    
+    # return dictionary to write to pickle
+    def get_dict(self):
+        grasps_dict = []
+        for g in self.grasps:
+            grasps_dict.append(g.get_dict())
+    
+        return {"mesh":  self.mesh_file,
+                "stable_pose": self.T_table_obj,
+                "grasps":  grasps_dict}
+    
+    
+
+# Get StablePoseData and processed 3D Object using DEXNET
+# mesh_out: string           mesh output dictionary
+# sp_min_p: float            stable pose probability
+# egad_path: string          path to egad config
+# dexnet_path: string        path to dexnet config
+class DexnetGetGraspdata:
+    def __init__(self, mesh_out, sp_min_p, egad_path, dexnet_path):
         ## VARIABLES
         # min stable pose probability
         self.stable_pose_min_p = sp_min_p
         
-        # output dir
-        self.pickle_out = pickle_out
+        # mesh output dir
         self.mesh_out = mesh_out
         
         ## SETUP CONFIG
@@ -70,6 +131,8 @@ class DexnetGraspdata:
         self.metric_config = GraspQualityConfigFactory().create_config(self.egad_config['metrics']['ferrari_canny'])
         # has to be reinitiated  to avoid errors
         self.collision_checker  = None
+        
+        self.grasp_data_list = None
         
     # setup config
     def setup_config(self, egad_path, dexnet_path):
@@ -115,7 +178,7 @@ class DexnetGraspdata:
         
         aligned_grasps = [grasp.perpendicular_table(stable_pose) for grasp in grasps]
         
-        grasp_data = list()
+        self.grasp_data_list = list()
         
         # check grasp validity
         for aligned_grasp in aligned_grasps:
@@ -136,11 +199,11 @@ class DexnetGraspdata:
 
             if (collision_free and aligned_grasp.close_fingers(obj)[0]):
                 quality = convert_quality(quality_fn(aligned_grasp).quality)
-                grasp_data.append({"grasp_T": aligned_grasp.T_grasp_obj.matrix,
-                                   "contact0": aligned_grasp.close_fingers(obj)[1][0].point,
-                                   "contact1": aligned_grasp.close_fingers(obj)[1][1].point,
-                                   "quality": quality})
-        return grasp_data
+                self.grasp_data_list.append(GraspData(aligned_grasp.T_grasp_obj.matrix,
+                                                 aligned_grasp.close_fingers(obj)[1][0].point,
+                                                 aligned_grasp.close_fingers(obj)[1][1].point,
+                                                 quality))
+        return self.grasp_data_list
     
     # setup table data and in collision checker, return table to obj trans matrix
     def setup_Table(self, stable_pose, obj):
@@ -152,12 +215,6 @@ class DexnetGraspdata:
         self.collision_checker.set_table(self.table_mesh_filename, T_table_obj)
         return T_table_obj
     
-    # save grasps list as pickle file
-    def save_grasps(self, grasps_list, mesh_file):
-        meshname = mesh_file.replace(".uf", "").replace("_proc", "").replace(".obj", "")
-        with open(os.path.join(self.pickle_out, meshname + '_aligned_grasps_list.pkl'), 'wb') as out:
-                pickle.dump(grasps_list, out)
-    
     # Generate Stable Poses, Grasps and write to pickle 
     def generate_write(self, dir_path, mesh_file):
         # prepare mesh and +generate Grasps
@@ -168,7 +225,7 @@ class DexnetGraspdata:
         self.collision_checker = GraspCollisionChecker(self.gripper)        
         self.collision_checker.set_graspable_object(obj)
 
-        grasps_trans = list()
+        spd_list = list()
         
         # read in the stable poses of the mesh
         stable_poses = mesh_processor.stable_poses
@@ -180,14 +237,14 @@ class DexnetGraspdata:
                 
                 T_table_obj = self.setup_Table(stable_pose, obj)
                 grasp_data = self.get_grasps(stable_pose, obj)
-                grasps_trans.append({"mesh": mesh_file.replace(".obj", "_proc.obj"),
-                                     "stable_pose": T_table_obj.matrix,
-                                     "grasps": grasp_data
-                                    })
+                spd_list.append(StablePoseData(mesh_file.replace(".obj", "_proc.obj"),
+                                                   T_table_obj.matrix,
+                                                   grasp_data))
+
         
         # write pickle file
-        print("found %d grasps, writing to file" % len(grasps_trans))
-        self.save_grasps(grasps_trans, mesh_file)
+        print("found %d grasps, writing to file" % len(spd_list))
+        return spd_list
 
 # python main
 def run():
@@ -214,14 +271,16 @@ def run():
     # get list of all mesh files
     all_files = os.listdir(mesh_files_dir)
     obj_files = [f for f in all_files if f.endswith('.obj')]
-
+    
+    # output folders
     #output = os.path.join(base_output, datetime.datetime.now().strftime('%y%m%d_%H%M'))
     output = os.path.join(base_dir, "grasp-data")
     pickle_output = os.path.join(output, "pickle-files")
     mesh_output = os.path.join(output, "object-files")
     
     print("using meshes from EGAD output %s, writing to: %s" %(mesh_files_dir, output))
-
+    
+    # setup output folders
     # check if resume or new
     if not os.path.exists(output):
         os.makedirs(output)
@@ -250,11 +309,11 @@ def run():
     mesh_files = [f for f in mesh_files if f[0:8] not in already_done]
 
     # start grasp creation
-    Grasp_generator = DexnetGraspdata(pickle_output, mesh_output, STABLE_POSE_MIN_P, EGAD_PATH, DEXNET_PATH)
+    Grasp_generator = DexnetGetGraspdata(mesh_output, STABLE_POSE_MIN_P, EGAD_PATH, DEXNET_PATH)
     
     for e, m in enumerate(mesh_files):
         print("%d out of %d mesh files" % (e + 1, len(mesh_files)))
-        Grasp_generator.generate_write(mesh_files_dir, m)
-
+        grasp_data = Grasp_generator.generate_write(mesh_files_dir, m)
+        StablePoseData.save_grasps(grasp_data, pickle_output)
 if __name__ == "__main__":
     run()
