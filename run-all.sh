@@ -2,7 +2,7 @@
 LIMIT=120
 if [ ! -z "$1" ];
 then
-	OUTPUT=$1
+	OUTPUT=$(echo $1 | sed 's:/*$::')
 else
 	echo Error: no output folder specified
 	exit 1

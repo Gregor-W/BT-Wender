@@ -22,6 +22,7 @@ from autolab_core import NormalCloud, PointCloud, RigidTransform
 
 import numpy as np
 
+import random
 import pickle
 import pathlib
 import datetime
@@ -261,12 +262,14 @@ def run():
     egad_input = os.path.join(base_dir, "egad-output")
     folder = sorted(os.listdir(egad_input))[-1]
     
+    downloaded = False
     # find mesh folder
     if os.path.exists(os.path.join(egad_input, folder, "pool")):
         mesh_files_dir = os.path.join(egad_input, folder, "pool")
     else:
         # for downloaded dataset
-        mesh_files_dir = os.path.join(egad_input, folder)
+        mesh_files_dir = os.path.join(egad_input, folder)#
+        downloaded = True
 
     # get list of all mesh files
     all_files = os.listdir(mesh_files_dir)
@@ -300,7 +303,11 @@ def run():
 
     # Limit mesh files
     if limit is not None and limit < len(mesh_files):
-        mesh_files = sorted(mesh_files)[0:limit]
+        if downloaded:
+            random.shuffle(mesh_files)
+            mesh_files = mesh_files[0:limit]
+        else:
+            mesh_files = sorted(mesh_files)[0:limit]
     
     print("total %d mesh files found" % len(mesh_files))
     
