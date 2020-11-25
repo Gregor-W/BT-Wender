@@ -1,6 +1,7 @@
 # Generating Evolved Datasets to Train Neural Networks for Robotic Grasping
 This is the Repo includes installation and execution code to generate an EGAD-dataset (https://github.com/dougsm/egad) and to convert it for training of GGCNN (https://github.com/dougsm/ggcnn).
-This project was created as part of a collaboration with Dionysios Satikidis at Festo.
+Author: [Gregor Wender](https://github.com/Gregor-W)
+This project was created as part of a collaboration with [Dionysios Satikidis](https://github.com/MrDio/) (University of Applied Sciences Esslingen) in collaboration with [Prof. Weiland](https://www.tec.reutlingen-university.de/fakultaet/personen/professoren/#jens-weiland) from [Reutingen University](https://www.reutlingen-university.de/home/)
 
 # Installation:
 The included installation scripts are setup for an AWS machine with a GPU running on Ubuntu 18.04.5 LTS.
