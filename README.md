@@ -38,7 +38,7 @@ mkdir .../output/
 mkdir .../output/egad-output
 ```
 
-#1
+## 1
 Run egad data generation
 ```bash
 cd ~/egad/singularity
@@ -56,7 +56,7 @@ unzip egadtrainset.zip
 rm egadtrainset.zip
 ```
 
-#2
+## 2
 Run dexnet grasp and mesh preparation
 ```bash
 cd ~/egad/singularity
@@ -67,7 +67,7 @@ If the singularity container is unable to access the output directory use this c
 singularity run -B .../output:/output --app dexnetgraspdata egad.sif /output --limit 120
 ```
 
-#3
+## 3
 Run depthimage renderer
 ```bash
 DISPLAY variable has to be unset for OSmesa offscreen rendering
@@ -75,14 +75,14 @@ export DISPLAY=""
 python3 render/render-depth-all.py .../output
 ```
 
-#4
+## 4
 Run ggcnn dataset generation
 ```bash
 cd ~/ggcnn_development_features/ggcnn
 python3 generate_dataset.py .../output
 ```
 
-#5
+## 5
 Run ggcnn training
 ```bash
 python3 train_ggcnn.py .../output
@@ -94,10 +94,10 @@ python3 train_ggcnn.py .../output --contine_train .../old_model.hdf5
 
 # References and Acknowledgements
 This project wouldn't have been possible without the following projects:
-EGAD: https://github.com/dougsm/egad
-GGCNN: https://github.com/dougsm/ggcnn
-Dex-Net: https://github.com/BerkeleyAutomation/dex-net
-Pyrender: https://github.com/mmatl/pyrender
-Openrave: https://github.com/crigroup/openrave-installation
+* EGAD: https://github.com/dougsm/egad
+* GGCNN: https://github.com/dougsm/ggcnn
+* Dex-Net: https://github.com/BerkeleyAutomation/dex-net
+* Pyrender: https://github.com/mmatl/pyrender
+O* penrave: https://github.com/crigroup/openrave-installation
 
 
