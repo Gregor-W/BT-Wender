@@ -1,4 +1,4 @@
-# Using Computer Generated Datasets to Train Neural Networks for Robotic Grasping
+# Generating Evolved Datasets to Train Neural Networks for Robotic Grasping
 This is the Repo includes installation and execution code to generate an EGAD-dataset (https://github.com/dougsm/egad) and to convert it for training of GGCNN (https://github.com/dougsm/ggcnn).
 This project was created as part of a collaboration with Dionysios Satikidis at Festo.
 
@@ -91,3 +91,13 @@ Continue training on existing model
 ```bash
 python3 train_ggcnn.py .../output --contine_train .../old_model.hdf5
 ```
+
+# References and Acknowledgements
+This project wouldn't have been possible without the following projects:
+EGAD: https://github.com/dougsm/egad
+GGCNN: https://github.com/dougsm/ggcnn
+Dex-Net: https://github.com/BerkeleyAutomation/dex-net
+Pyrender: https://github.com/mmatl/pyrender
+Openrave: https://github.com/crigroup/openrave-installation
+
+
