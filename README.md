@@ -24,7 +24,7 @@ chmod +x run-all.sh
 ```
 The script will create a new folder in .../output
 ```bash
-./run-all .../output [OPTIONS]
+./run-all.sh .../output [OPTIONS]
 Options:
 -d, --download 	Download official EGAD training dataset instead of creating unique models
 -l, --limit 	Limit the amount of converted mesh files for dataset generation (default=120)
