@@ -1,5 +1,6 @@
-# BT-Wender
-This is the Repo for the Thesis of G. Wender
+# Using Computer Generated Datasets to Train Neural Networks for Robotic Grasping
+This is the Repo includes installation and execution code to generate an EGAD-dataset (https://github.com/dougsm/egad) and to convert it for training of GGCNN (https://github.com/dougsm/ggcnn).
+This project was created as part of a collaboration with Dionysios Satikidis at Festo.
 
 # Installation:
 The included installation scripts are setup for an AWS machine with a GPU running on Ubuntu 18.04.5 LTS.
