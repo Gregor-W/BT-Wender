@@ -11,9 +11,9 @@ chmod +x install/*
 ```
 Run install scrpits:
 ```bash
-./install/install-egad
-./install/install-ggcnn
-./install/install-pyrender
+./install/install-egad.sh
+./install/install-ggcnn.sh
+./install/install-pyrender.sh
 ```
 
 # Running process automatically:
